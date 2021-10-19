@@ -1,17 +1,11 @@
 import os
-import sys
-
-import IPython
 import torch
 import time
 import openai
 import speech_recognition as sr
 import soundfile as sf
-import wx
-import re
 
 from playsound import playsound
-from time import sleep
 from TTS.utils.generic_utils import setup_model
 from TTS.utils.io import load_config
 from TTS.utils.text.symbols import symbols, phonemes
