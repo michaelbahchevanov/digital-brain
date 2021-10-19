@@ -13,7 +13,8 @@ setup(
     url='https://github.com/michaelbahchevanov/digital-brain',
     packages=find_packages(),
     install_requires=[
-        numpy
+        'numpy',
+        'mediapipe'
     ],
     classifiers=[
         'Operating System :: POSIX :: Linux',

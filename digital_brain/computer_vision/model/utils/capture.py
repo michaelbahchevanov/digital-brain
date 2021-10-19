@@ -1,13 +1,10 @@
 import cv2 as cv
 
 
-class Capture():
+class Capture:
     """A layer of abstraction on top of OpenCV's camera I/O"""
-    def __init__(self, src=None, dimensions=(640, 480)):
-
-        if src:
-            self.cap = cv.VideoCapture(src)
-        self.cap = cv.VideoCapture(0)
+    def __init__(self, src=0, dimensions=(640, 480)):
+        self.cap = cv.VideoCapture(src)
         self.set_dimensions(dimensions)
         self.isSuccess = False
         self.frame = None
@@ -21,17 +18,17 @@ class Capture():
         self.cap.set(4, height)
 
     def get_dimensions(self):
-        return self.cap.get(3), self.cap.get(4)
+        return int(self.cap.get(3)), int(self.cap.get(4))
 
     def cleanup(self):
         self.cap.release()
         cv.destroyAllWindows()
 
-    def show(self, name="Capture: "):
+    def show(self, name="Capture"):
         cv.imshow(name, self.frame)
 
-    def wait_exit(self, keybind='q'):
-        if cv.waitKey(10) & 0xFF == ord('q'):
+    def wait_exit(self, key='q'):
+        if cv.waitKey(10) & 0xFF == ord(key):
             return True
         return False
 
