@@ -1,23 +1,20 @@
 import os
-import sys
-
-import IPython
 import torch
 import time
 import openai
 import speech_recognition as sr
 import soundfile as sf
-import wx
-import re
+import threading
 
 from playsound import playsound
-from time import sleep
 from TTS.utils.generic_utils import setup_model
 from TTS.utils.io import load_config
 from TTS.utils.text.symbols import symbols, phonemes
 from TTS.utils.audio import AudioProcessor
 from TTS.utils.synthesis import synthesis
 from TTS.vocoder.utils.generic_utils import setup_generator
+from digital_brain.computer_vision.model.utils.capture import Capture
+from digital_brain.computer_vision.model.facial_detector import FaceDetector
 
 openai.api_key = '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'
 use_cuda = False
@@ -59,7 +56,7 @@ if 'r' in cp:
 # model.length_scale = 0.8  # set speed of the speech.
 # model.noise_scale = 0.33  # set speech variationd
 
-# LOAD VOCODER MODEL
+# Load vocoder model
 vocoder_model = setup_generator(VOCODER_CONFIG)
 vocoder_model.load_state_dict(torch.load(VOCODER_MODEL, map_location="cpu")["model"])
 vocoder_model.remove_weight_norm()
@@ -71,6 +68,17 @@ if use_cuda:
 vocoder_model.eval()
 
 
+# Wrapper to run a method once
+def run_once(f):
+    def wrapper(*args, **kwargs):
+        if not wrapper.has_run:
+            wrapper.has_run = True
+            return f(*args, **kwargs)
+    wrapper.has_run = False
+    return wrapper
+
+
+# Method that generate conversation based on prompts via openai GPT-3 Completion API
 def gptConversationalModel(convo):
     global txt
     # sustainability and sustainable fashion
@@ -109,6 +117,7 @@ def gptConversationalModel(convo):
         txt = "Michelle Green: " + response['choices'][0]['text']
 
 
+# Method to get answers based on context via openai GPT-3 Answer API
 def gptContextModel(question):
     provided_answer = openai.Answer.create(
         search_model="ada",
@@ -129,11 +138,22 @@ def gptContextModel(question):
     os.remove(filename)
 
 
+# Method to initiate conversation with Michelle Green
+@run_once
+def detect_person_initial():
+    textToSpeechAudio("hello")
+    filename = '../clean_audio.wav'
+    playsound(filename)
+    os.remove(filename)
+
+
+# Method to convert audio array to wav file and save the file for later usage
 def textToSpeechAudio(input_text):
     align, spec, stop_tokens, wav = tts(model, input_text, TTS_CONFIG, use_cuda, ap, use_gl=False, figures=True)
     sf.write('../clean_audio.wav', wav, 22050, "PCM_16")
 
 
+# Method to generate text to speech synthesis
 def tts(model, text, CONFIG, use_cuda, ap, use_gl, figures=True):
     t_1 = time.time()
     waveform, alignment, mel_spec, mel_postnet_spec, stop_tokens, inputs = synthesis(model, text, CONFIG, use_cuda, ap, speaker_id, style_wav=None, truncated=False, enable_eos_bos_chars=CONFIG.enable_eos_bos_chars)
@@ -147,9 +167,9 @@ def tts(model, text, CONFIG, use_cuda, ap, use_gl, figures=True):
     return alignment, mel_postnet_spec, stop_tokens, waveform
 
 
+# method that start the conversational application
 def main_app():
     r = sr.Recognizer()
-
     try:
         while True:
             with sr.Microphone() as source:
@@ -157,6 +177,7 @@ def main_app():
                 r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
                 audio_text = r.listen(source, timeout=4)
                 print("Time over, thanks")
+
                 text = r.recognize_google(audio_text)
                 print("You: " + text)
                 gptConversationalModel(text)
@@ -164,6 +185,7 @@ def main_app():
                 if source is None:
                     continue
 
+                # get goodbye from text and stop app
                 # res = re.findall(r'\w+', text)
                 # # print(res)
     except Exception as e:
@@ -171,9 +193,33 @@ def main_app():
         print("Conversation ended.")
 
 
+# Method that starts the facial detection application
+def start_cv():
+    capture = Capture()
+    face_detector = FaceDetector()
+
+    while True:
+        capture.start()
+        _, bboxes = face_detector.find_faces(capture.frame)
+        capture.show()
+
+        if bboxes:
+            detect_person_initial()
+
+        if capture.wait_exit():
+            break
+    capture.cleanup()
+
+
 if __name__ == '__main__':
     response = input("\nStart conversation (Yes or No)? ")
     if response[0] == "y":
-        main_app()
+        t1 = threading.Thread(target=start_cv)
+        t2 = threading.Thread(target=main_app)
+
+        # starting thread 1
+        t1.start()
+        # starting thread 2
+        t2.start()
     elif response[0] == "n":
-        print("Good bye")
+        print("Application stopped. Good bye")
