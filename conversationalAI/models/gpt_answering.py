@@ -2,7 +2,7 @@ import os
 import openai
 
 from playsound import playsound
-from conversationalAI.models.text_to_speech import TextToSpeech
+from .text_to_speech import TextToSpeech
 
 
 class QuestionAnswering:
@@ -22,7 +22,6 @@ class QuestionAnswering:
         )
 
         TextToSpeech.textToSpeechAudio(provided_answer['answers'][0])
-        # textToSpeechAudio(provided_answer['answers'][0])
         filename = '../clean_audio.wav'
         playsound(filename)
         os.remove(filename)

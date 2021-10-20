@@ -293,6 +293,7 @@ class Decoder(nn.Module):
             if len(outputs) == self.max_decoder_steps:
                 print("   | > Decoder stopped with 'max_decoder_steps")
                 break
+                # continue
 
             memory = self._update_memory(decoder_output)
             t += 1

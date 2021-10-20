@@ -1,4 +1,5 @@
 import os
+import re
 import openai
 import speech_recognition as sr
 import threading
@@ -6,8 +7,8 @@ import threading
 from playsound import playsound
 from digital_brain.computer_vision.model.utils.capture import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
-from conversationalAI.models.text_to_speech import TextToSpeech
-from conversationalAI.models.gpt_completion import Completion
+from models.text_to_speech import TextToSpeech
+from models.gpt_completion import Completion
 
 openai.api_key = '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'
 
@@ -26,7 +27,6 @@ def run_once(f):
 @run_once
 def detect_person_initial():
     TextToSpeech.textToSpeechAudio("hello")
-    # textToSpeechAudio("hello")
     filename = '../clean_audio.wav'
     playsound(filename)
     os.remove(filename)
@@ -35,24 +35,33 @@ def detect_person_initial():
 # method that start the conversational application
 def main_app():
     r = sr.Recognizer()
+
     try:
         while True:
             with sr.Microphone() as source:
-                print("Please wait 1 second before speaking!")
+                print("Speak when you hear DING!!!")
+                playsound("convo_prompt_2.mp3")
                 r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
                 audio_text = r.listen(source, timeout=4)
                 print("Time over, thanks")
 
                 text = r.recognize_google(audio_text)
                 print("You: " + text)
+
+                # # get goodbye from text and stop app
+                # res = re.findall(r'\w+', text)
+                # # print(res)
+                #
+                # if "goodbye" in res and len(res) == 1:
+                #     return True
+
                 Completion.gptConversationalModel(text)
 
                 if source is None:
                     continue
 
-                # get goodbye from text and stop app
-                # res = re.findall(r'\w+', text)
-                # # print(res)
+                # return False
+
     except Exception as e:
         print(e)
         print("Conversation ended.")
@@ -60,31 +69,44 @@ def main_app():
 
 # Method that starts the facial detection application
 def start_cv():
-    capture = Capture()
+    capture = Capture(-1)
     face_detector = FaceDetector()
 
     while True:
         capture.start()
         _, bboxes = face_detector.find_faces(capture.frame)
-        capture.show()
 
         if bboxes:
             detect_person_initial()
+            return True
 
         if capture.wait_exit():
             break
+
     capture.cleanup()
 
 
-if __name__ == '__main__':
-    response = input("\nStart conversation (Yes or No)? ")
-    if response[0] == "y":
-        t1 = threading.Thread(target=start_cv)
-        t2 = threading.Thread(target=main_app)
+def main():
+    while True:
+        init = start_cv()
+        if init:
+            app_thread = threading.Thread(target=main_app)
+            app_thread.start()
+            end = app_thread.join()
 
-        # starting thread 1
-        t1.start()
-        # starting thread 2
-        t2.start()
-    elif response[0] == "n":
-        print("Application stopped. Good bye")
+            if end:
+                init = False
+                # main()
+
+    # t1 = threading.Thread(target=start_cv)
+    # t1.start()
+
+    # while t1.is_alive():
+    #     app_thread = threading.Thread(target=main_app)
+    #     app_thread.start()
+
+if __name__ == '__main__':
+    main()
+
+
+

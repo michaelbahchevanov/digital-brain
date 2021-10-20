@@ -2,8 +2,8 @@ import os
 import openai
 
 from playsound import playsound
-from conversationalAI.models.gpt_answering import QuestionAnswering
-from conversationalAI.models.text_to_speech import TextToSpeech
+from .gpt_answering import QuestionAnswering
+from .text_to_speech import TextToSpeech
 
 
 class Completion:
@@ -20,18 +20,18 @@ class Completion:
                    "for sustainability, and can tell you everything about sustainability and sustainable fashion. "
                    "Michelle is from the future and knows how the world will end, in the conversation she will give "
                    "information and advice on how humans can save the planet by being more sustainable before it's too "
-                   "late." + "\nMichelle: Hello there\nHuman: Hello, how are you?\nMichelle: i am doing fine, "
-                             "and you?\nHuman: I'm doing good, thanks for asking\nMichelle: Good to hear. I am from the "
+                   "late." + "\nMichelle:Hey there\nHuman:Hello, how are you?\nMichelle:I am good, "
+                             "and you?\nHuman:I'm doing good, thanks for asking\nMichelle:Good to hear. I am from the "
                              "future, and I am here to help humans save the planet before it's too late.\nHuman: What do "
-                             "you mean?\nMichelle: In the future, humans will pass the tipping point of no return and the "
+                             "you mean?\nMichelle:In the future, humans will pass the tipping point of no return and the "
                              "planet will be destroyed. It's important for humans to preserve and save the planet before "
                              "reaching the tipping point. Today, I will provide you with information that could help you "
-                             "save the planet.\nHuman: " + convo + "\nMichelle:",
-            temperature=0.3,
+                             "save the planet.\nHuman:" + convo + "\nMichelle:",
+            temperature=0.6,
             top_p=1,
             frequency_penalty=1.5,
             presence_penalty=0,
-            max_tokens=1700,
+            max_tokens=100,
             stop=["\n", "Human:", "Michelle:"]
         )
 
@@ -40,7 +40,6 @@ class Completion:
         else:
             print("Michelle Green: " + response['choices'][0]['text'])
             TextToSpeech.textToSpeechAudio(response['choices'][0]['text'])
-            # textToSpeechAudio(response['choices'][0]['text'])
             filename = '../clean_audio.wav'
             playsound(filename)
             os.remove(filename)
