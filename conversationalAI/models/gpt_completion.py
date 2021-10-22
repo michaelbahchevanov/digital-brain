@@ -31,7 +31,7 @@ class Completion:
             top_p=1,
             frequency_penalty=1.5,
             presence_penalty=0,
-            max_tokens=100,
+            max_tokens=1700,
             stop=["\n", "Human:", "Michelle:"]
         )
 

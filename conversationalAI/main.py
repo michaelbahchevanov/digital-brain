@@ -48,20 +48,15 @@ def main_app():
                 text = r.recognize_google(audio_text)
                 print("You: " + text)
 
-                # # get goodbye from text and stop app
-                # res = re.findall(r'\w+', text)
-                # # print(res)
-                #
-                # if "goodbye" in res and len(res) == 1:
-                #     return True
+                # get goodbye from text and stop app
+                res = re.findall(r'\w+', text)
+                if "goodbye" in res and len(res) == 1:
+                    break
 
                 Completion.gptConversationalModel(text)
 
                 if source is None:
                     continue
-
-                # return False
-
     except Exception as e:
         print(e)
         print("Conversation ended.")
@@ -94,16 +89,12 @@ def main():
             app_thread.start()
             end = app_thread.join()
 
-            if end:
-                init = False
-                # main()
+            if not end:
+                print('ENDED')
+                break
+            else:
+                continue
 
-    # t1 = threading.Thread(target=start_cv)
-    # t1.start()
-
-    # while t1.is_alive():
-    #     app_thread = threading.Thread(target=main_app)
-    #     app_thread.start()
 
 if __name__ == '__main__':
     main()
