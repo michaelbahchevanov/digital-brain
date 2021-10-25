@@ -1,5 +1,7 @@
 import os
 import re
+import time
+
 import openai
 import speech_recognition as sr
 import threading
@@ -26,7 +28,7 @@ def run_once(f):
 # Method to initiate conversation with Michelle Green
 @run_once
 def detect_person_initial():
-    TextToSpeech.textToSpeechAudio("hello")
+    TextToSpeech.textToSpeechAudio("Hello there!")
     filename = '../clean_audio.wav'
     playsound(filename)
     os.remove(filename)
@@ -36,27 +38,43 @@ def detect_person_initial():
 def main_app():
     r = sr.Recognizer()
 
+    topics = ['sustainability', 'customer support']
+    print(topics)
+    TextToSpeech.textToSpeechAudio("Please choose one of the following topics. Sustainability and sustainable fashion or customer support")
+    filename = '../clean_audio.wav'
+    playsound(filename)
+
     try:
-        while True:
-            with sr.Microphone() as source:
-                print("Speak when you hear DING!!!")
-                playsound("convo_prompt_2.mp3")
-                r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
-                audio_text = r.listen(source, timeout=4)
-                print("Time over, thanks")
 
-                text = r.recognize_google(audio_text)
-                print("You: " + text)
+        # os.remove(filename)
+        inputText = input('Choose a topic: ')
+        if inputText == 'sustainability':
+            while True:
+                with sr.Microphone() as source:
+                    print("Speak when you hear DING!!!")
+                    playsound("convo_prompt_2.mp3")
+                    r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
+                    audio_text = r.listen(source, timeout=4)
+                    print("Time over, thanks")
 
-                # get goodbye from text and stop app
-                res = re.findall(r'\w+', text)
-                if "goodbye" in res and len(res) == 1:
-                    break
+                    text = r.recognize_google(audio_text)
+                    print("You: " + text)
 
-                Completion.gptConversationalModel(text)
+                    # get goodbye from text and stop app
+                    res = re.findall(r'\w+', text)
+                    if "goodbye" in res and len(res) == 1:
+                        break
 
-                if source is None:
-                    continue
+                    Completion.gptConversationalModel(text)
+
+                    if source is None:
+                        continue
+        elif inputText == 'customer support':
+            TextToSpeech.textToSpeechAudio("I can't give you any support at the moment.")
+            filename = '../clean_audio.wav'
+            playsound(filename)
+            # os.remove(filename)
+            return
     except Exception as e:
         print(e)
         print("Conversation ended.")
@@ -85,6 +103,7 @@ def main():
     while True:
         init = start_cv()
         if init:
+            time.sleep(2)
             app_thread = threading.Thread(target=main_app)
             app_thread.start()
             end = app_thread.join()

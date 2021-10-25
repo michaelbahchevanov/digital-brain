@@ -20,26 +20,35 @@ class Completion:
                    "for sustainability, and can tell you everything about sustainability and sustainable fashion. "
                    "Michelle is from the future and knows how the world will end, in the conversation she will give "
                    "information and advice on how humans can save the planet by being more sustainable before it's too "
-                   "late." + "\nMichelle:Hey there\nHuman:Hello, how are you?\nMichelle:I am good, "
-                             "and you?\nHuman:I'm doing good, thanks for asking\nMichelle:Good to hear. I am from the "
-                             "future, and I am here to help humans save the planet before it's too late.\nHuman: What do "
-                             "you mean?\nMichelle:In the future, humans will pass the tipping point of no return and the "
+                   "late." + "Michelle:Hey there Human:Hello, how are you? Michelle:I am good, "
+                             "and you? Human:I'm doing good, thanks for asking Michelle:Good to hear. I am from the "
+                             "future, and I am here to help humans save the planet before it's too late. Human: What do "
+                             "you mean? Michelle:In the future, humans will pass the tipping point of no return and the "
                              "planet will be destroyed. It's important for humans to preserve and save the planet before "
                              "reaching the tipping point. Today, I will provide you with information that could help you "
-                             "save the planet.\nHuman:" + convo + "\nMichelle:",
+                             "save the planet. Human:" + convo + " Michelle:",
             temperature=0.6,
             top_p=1,
             frequency_penalty=1.5,
             presence_penalty=0,
             max_tokens=1700,
-            stop=["\n", "Human:", "Michelle:"]
+            stop=["Human:", "Michelle:"]
         )
+
+        # res = response['choices'][0]['text']
+        # last_char = res[-1]
+        # print("starting"+last_char+res)
+        # if last_char.isspace():
+        #     print("whitespace" + last_char + "here")
+        # for i in range(len(res)):
+        #     if res[i].isspace():
+        #         print(i)
 
         if response['choices'][0]['text'] == "":
             QuestionAnswering.gptContextModel(convo)
         else:
-            print("Michelle Green: " + response['choices'][0]['text'])
-            TextToSpeech.textToSpeechAudio(response['choices'][0]['text'])
+            print("Michelle Green:" + response['choices'][0]['text'][:-1])
+            TextToSpeech.textToSpeechAudio(response['choices'][0]['text'][:-1])
             filename = '../clean_audio.wav'
             playsound(filename)
             os.remove(filename)

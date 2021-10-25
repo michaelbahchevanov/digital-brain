@@ -102,7 +102,7 @@ class Decoder(nn.Module):
         self.r = r
         self.encoder_embedding_dim = input_dim
         self.separate_stopnet = separate_stopnet
-        self.max_decoder_steps = 500
+        self.max_decoder_steps = 2000
         self.gate_threshold = 0.5
 
         # model dimensions
@@ -291,7 +291,7 @@ class Decoder(nn.Module):
             if stop_token > 0.7 and t > inputs.shape[0] / 2:
                 break
             if len(outputs) == self.max_decoder_steps:
-                print("   | > Decoder stopped with 'max_decoder_steps")
+                print(" | > Decoder stopped with 'max_decoder_steps number 1")
                 break
                 # continue
 

@@ -49,9 +49,6 @@ class TextToSpeech:
     if 'r' in cp:
         model.decoder.set_r(cp['r'])
 
-    # model.length_scale = 0.8  # set speed of the speech.
-    # model.noise_scale = 0.33  # set speech variationd
-
     # Load vocoder model
     vocoder_model = setup_generator(VOCODER_CONFIG)
     vocoder_model.load_state_dict(torch.load(VOCODER_MODEL, map_location="cpu")["model"])
@@ -62,6 +59,9 @@ class TextToSpeech:
     if use_cuda:
         vocoder_model.cuda()
     vocoder_model.eval()
+
+    # model.length_scale = 0.8  # set speed of the speech.
+    # model.noise_scale = 0.01  # set speech variation
 
     # Method to generate text to speech synthesis
     def tts(model, text, CONFIG, use_cuda, ap, use_gl, figures=True):
