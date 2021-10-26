@@ -142,3 +142,6 @@ cython_debug/
 
 # venv
 digital-brain-venv/
+
+# training data for models
+training_data/
