@@ -53,7 +53,7 @@ def main_app():
             while True:
                 with sr.Microphone() as source:
                     print("Speak when you hear DING!!!")
-                    playsound("convo_prompt_2.mp3")
+                    playsound("audio/convo_prompt_2.mp3")
                     r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
                     audio_text = r.listen(source, timeout=4)
                     print("Time over, thanks")
