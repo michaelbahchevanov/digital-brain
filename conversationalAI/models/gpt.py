@@ -2,11 +2,10 @@ import os
 import openai
 
 from playsound import playsound
-from .gpt_answering import QuestionAnswering
 from .text_to_speech import TextToSpeech
 
 
-class Completion:
+class GPTPlatform:
     # Method that generate conversation based on prompts via openai GPT-3 Completion API
     def gptConversationalModel(convo):
 
@@ -35,20 +34,36 @@ class Completion:
             stop=["Human:", "Michelle:"]
         )
 
-        # res = response['choices'][0]['text']
-        # last_char = res[-1]
-        # print("starting"+last_char+res)
-        # if last_char.isspace():
-        #     print("whitespace" + last_char + "here")
-        # for i in range(len(res)):
-        #     if res[i].isspace():
-        #         print(i)
+        whitespaced_response = response['choices'][0]['text']
+
+        if whitespaced_response[-1].isspace():
+            newstring = whitespaced_response[:-1]+'.'
 
         if response['choices'][0]['text'] == "":
-            QuestionAnswering.gptContextModel(convo)
+            GPTPlatform.gptContextModel(convo)
         else:
-            print("Michelle Green:" + response['choices'][0]['text'][:-1])
-            TextToSpeech.textToSpeechAudio(response['choices'][0]['text'][:-1])
+            print("Michelle Green:" + newstring)
+            TextToSpeech.textToSpeechAudio(newstring)
             filename = '../clean_audio.wav'
             playsound(filename)
             os.remove(filename)
+
+    # Method to get answers based on context via openai GPT-3 Answer API
+    def gptContextModel(question):
+        provided_answer = openai.Answer.create(
+            search_model="ada",
+            model="curie-instruct-beta",
+            question=question,
+            file="file-tqK7GAt4ZkOpJi9HdCw2070P",
+            examples_context="In 2017, U.S. life expectancy was 78.6 years.",
+            examples=[["What is human life expectancy in the United States?",
+                       "The life expectancy in the United States is 78 years."]],
+            max_rerank=5,
+            max_tokens=1000,
+            stop=["\n"]
+        )
+
+        TextToSpeech.textToSpeechAudio(provided_answer['answers'][0])
+        filename = '../clean_audio.wav'
+        playsound(filename)
+        os.remove(filename)

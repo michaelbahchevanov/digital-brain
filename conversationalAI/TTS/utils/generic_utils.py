@@ -9,59 +9,59 @@ import numpy as np
 from collections import Counter
 
 
-def get_git_branch():
-    try:
-        out = subprocess.check_output(["git", "branch"]).decode("utf8")
-        current = next(line for line in out.split("\n")
-                       if line.startswith("*"))
-        current.replace("* ", "")
-    except subprocess.CalledProcessError:
-        current = "inside_docker"
-    return current
+# def get_git_branch():
+#     try:
+#         out = subprocess.check_output(["git", "branch"]).decode("utf8")
+#         current = next(line for line in out.split("\n")
+#                        if line.startswith("*"))
+#         current.replace("* ", "")
+#     except subprocess.CalledProcessError:
+#         current = "inside_docker"
+#     return current
+#
+#
+# def get_commit_hash():
+#     """https://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script"""
+#     # try:
+#     #     subprocess.check_output(['git', 'diff-index', '--quiet',
+#     #                              'HEAD'])  # Verify client is clean
+#     # except:
+#     #     raise RuntimeError(
+#     #         " !! Commit before training to get the commit hash.")
+#     try:
+#         commit = subprocess.check_output(
+#             ['git', 'rev-parse', '--short', 'HEAD']).decode().strip()
+#     # Not copying .git folder into docker container
+#     except subprocess.CalledProcessError:
+#         commit = "0000000"
+#     print(' > Git Hash: {}'.format(commit))
+#     return commit
 
 
-def get_commit_hash():
-    """https://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script"""
-    # try:
-    #     subprocess.check_output(['git', 'diff-index', '--quiet',
-    #                              'HEAD'])  # Verify client is clean
-    # except:
-    #     raise RuntimeError(
-    #         " !! Commit before training to get the commit hash.")
-    try:
-        commit = subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD']).decode().strip()
-    # Not copying .git folder into docker container
-    except subprocess.CalledProcessError:
-        commit = "0000000"
-    print(' > Git Hash: {}'.format(commit))
-    return commit
-
-
-def create_experiment_folder(root_path, model_name, debug):
-    """ Create a folder with the current date and time """
-    date_str = datetime.datetime.now().strftime("%B-%d-%Y_%I+%M%p")
-    if debug:
-        commit_hash = 'debug'
-    else:
-        commit_hash = get_commit_hash()
-    output_folder = os.path.join(
-        root_path, model_name + '-' + date_str + '-' + commit_hash)
-    os.makedirs(output_folder, exist_ok=True)
-    print(" > Experiment folder: {}".format(output_folder))
-    return output_folder
-
-
-def remove_experiment_folder(experiment_path):
-    """Check folder if there is a checkpoint, otherwise remove the folder"""
-
-    checkpoint_files = glob.glob(experiment_path + "/*.pth.tar")
-    if not checkpoint_files:
-        if os.path.exists(experiment_path):
-            shutil.rmtree(experiment_path, ignore_errors=True)
-            print(" ! Run is removed from {}".format(experiment_path))
-    else:
-        print(" ! Run is kept in {}".format(experiment_path))
+# def create_experiment_folder(root_path, model_name, debug):
+#     """ Create a folder with the current date and time """
+#     date_str = datetime.datetime.now().strftime("%B-%d-%Y_%I+%M%p")
+#     if debug:
+#         commit_hash = 'debug'
+#     else:
+#         commit_hash = get_commit_hash()
+#     output_folder = os.path.join(
+#         root_path, model_name + '-' + date_str + '-' + commit_hash)
+#     os.makedirs(output_folder, exist_ok=True)
+#     print(" > Experiment folder: {}".format(output_folder))
+#     return output_folder
+#
+#
+# def remove_experiment_folder(experiment_path):
+#     """Check folder if there is a checkpoint, otherwise remove the folder"""
+#
+#     checkpoint_files = glob.glob(experiment_path + "/*.pth.tar")
+#     if not checkpoint_files:
+#         if os.path.exists(experiment_path):
+#             shutil.rmtree(experiment_path, ignore_errors=True)
+#             print(" ! Run is removed from {}".format(experiment_path))
+#     else:
+#         print(" ! Run is kept in {}".format(experiment_path))
 
 
 def count_parameters(model):

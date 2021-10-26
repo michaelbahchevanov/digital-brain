@@ -7,10 +7,11 @@ import speech_recognition as sr
 import threading
 
 from playsound import playsound
+
+from conversationalAI.models.gpt import GPTPlatform
 from digital_brain.computer_vision.model.utils.capture import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
-from models.gpt_completion import Completion
 
 openai.api_key = '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'
 
@@ -40,7 +41,7 @@ def main_app():
 
     topics = ['sustainability', 'customer support']
     print(topics)
-    TextToSpeech.textToSpeechAudio("Please choose one of the following topics. Sustainability and sustainable fashion or customer support")
+    TextToSpeech.textToSpeechAudio("Please choose one of the following topics. Sustainability or customer support")
     filename = '../clean_audio.wav'
     playsound(filename)
 
@@ -65,7 +66,7 @@ def main_app():
                     if "goodbye" in res and len(res) == 1:
                         break
 
-                    Completion.gptConversationalModel(text)
+                    GPTPlatform.gptConversationalModel(text)
 
                     if source is None:
                         continue
