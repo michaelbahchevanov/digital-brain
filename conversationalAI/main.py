@@ -8,7 +8,7 @@ import threading
 
 from playsound import playsound
 
-from conversationalAI.models.gpt import GPTPlatform
+from models.gpt import GPTPlatform
 from digital_brain.computer_vision.model.utils.capture import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
@@ -74,7 +74,7 @@ def main_app():
             TextToSpeech.textToSpeechAudio("I can't give you any support at the moment.")
             filename = '../clean_audio.wav'
             playsound(filename)
-            # os.remove(filename)
+            os.remove(filename)
             return
     except Exception as e:
         print(e)
