@@ -2,6 +2,7 @@ import sys
 import torch
 import time
 import soundfile as sf
+import os
 
 sys.path.append('TTS')
 from TTS.utils.generic_utils import setup_model
@@ -16,7 +17,7 @@ class TextToSpeech:
     use_cuda = False
 
     # model paths
-    TTS_MODEL = "helpers/tts_model.pth.tar"
+    TTS_MODEL = os.getcwd() + "/helpers/tts_model.pth.tar"
     TTS_CONFIG = "helpers/config.json"
     VOCODER_MODEL = "helpers/vocoder_model.pth.tar"
     VOCODER_CONFIG = "helpers/config_vocoder.json"
