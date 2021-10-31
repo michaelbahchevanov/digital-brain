@@ -2,26 +2,24 @@ import os
 import re
 import time
 
-import openai
 import speech_recognition as sr
 import threading
 
 from playsound import playsound
-
 from models.gpt import GPTPlatform
 from digital_brain.computer_vision.model.utils.capture import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
-
-openai.api_key = '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'
+from models.brand_sentiment_analysis import *
 
 
 # Wrapper to run a method once
-def run_once(f):
+def run_once(trigger):
     def wrapper(*args, **kwargs):
         if not wrapper.has_run:
             wrapper.has_run = True
-            return f(*args, **kwargs)
+            return trigger(*args, **kwargs)
+
     wrapper.has_run = False
     return wrapper
 
@@ -29,10 +27,34 @@ def run_once(f):
 # Method to initiate conversation with Michelle Green
 @run_once
 def detect_person_initial():
-    TextToSpeech.textToSpeechAudio("Hello there!")
-    filename = '../clean_audio.wav'
+    TextToSpeech.textToSpeechAudio("Hey there!")
+    filename = 'audio/clean_audio.wav'
     playsound(filename)
     os.remove(filename)
+
+
+# method to get sentiment based speech converted to text - STT
+def get_sentiment(sentiment):
+    model = SentimentClassifier.load_sentiment_model()
+
+    encoded_review = SentimentClassifier.tokenizer.encode_plus(
+        sentiment,
+        max_length=SentimentClassifier.MAX_LEN,
+        add_special_tokens=True,
+        return_token_type_ids=False,
+        padding=True,
+        return_attention_mask=True,
+        return_tensors='pt',
+        truncation=True,
+    )
+
+    input_ids = encoded_review['input_ids'].to(SentimentClassifier.device)
+    attention_mask = encoded_review['attention_mask'].to(SentimentClassifier.device)
+
+    output = model(input_ids, attention_mask)
+    _, prediction = torch.max(output, dim=1)
+
+    return SentimentClassifier.class_names[prediction]
 
 
 # method that start the conversational application
@@ -41,13 +63,11 @@ def main_app():
 
     topics = ['sustainability', 'customer support']
     print(topics)
-    TextToSpeech.textToSpeechAudio("Please choose one of the following topics. Sustainability or customer support")
-    filename = '../clean_audio.wav'
+    TextToSpeech.textToSpeechAudio("Please choose one a topic. Sustainability or Customer Support")
+    filename = 'audio/clean_audio.wav'
     playsound(filename)
 
     try:
-
-        # os.remove(filename)
         inputText = input('Choose a topic: ')
         if inputText == 'sustainability':
             while True:
@@ -57,22 +77,24 @@ def main_app():
                     r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
                     audio_text = r.listen(source, timeout=4)
                     print("Time over, thanks")
-
                     text = r.recognize_google(audio_text)
                     print("You: " + text)
+                    # text = "Nike is not doing enough to help save the planet!!!"
 
                     # get goodbye from text and stop app
                     res = re.findall(r'\w+', text)
                     if "goodbye" in res and len(res) == 1:
                         break
 
-                    GPTPlatform.gptConversationalModel(text)
+                    user_sentiment_on_brands = get_sentiment(text) + ". " + text
+
+                    GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
 
                     if source is None:
                         continue
         elif inputText == 'customer support':
             TextToSpeech.textToSpeechAudio("I can't give you any support at the moment.")
-            filename = '../clean_audio.wav'
+            filename = 'audio/clean_audio.wav'
             playsound(filename)
             os.remove(filename)
             return
@@ -118,6 +140,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-

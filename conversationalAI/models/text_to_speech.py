@@ -80,4 +80,4 @@ class TextToSpeech:
     # Method to convert audio array to wav file and save the file for later usage
     def textToSpeechAudio(input_text):
         align, spec, stop_tokens, wav = TextToSpeech.tts(TextToSpeech.model, input_text, TextToSpeech.TTS_CONFIG, TextToSpeech.use_cuda, TextToSpeech.ap, use_gl=False, figures=True)
-        sf.write('../clean_audio.wav', wav, 22050, "PCM_16")
+        sf.write('audio/clean_audio.wav', wav, 22050, "PCM_16")

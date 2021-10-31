@@ -143,3 +143,9 @@ cython_debug/
 
 # venv
 digital-brain-venv/
+
+# config
+.ini/
+config.ini/
+config.ini
+
