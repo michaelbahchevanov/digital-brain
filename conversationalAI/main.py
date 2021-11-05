@@ -12,7 +12,6 @@ from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
 from models.brand_sentiment_analysis import *
 
-
 # Wrapper to run a method once
 def run_once(trigger):
     def wrapper(*args, **kwargs):
@@ -63,7 +62,7 @@ def main_app():
 
     topics = ['sustainability', 'customer support']
     print(topics)
-    TextToSpeech.textToSpeechAudio("Please choose one a topic. Sustainability or Customer Support")
+    TextToSpeech.textToSpeechAudio("Please choose a topic. Sustainability or Customer Support. After choosing, speak when you hear the ding!")
     filename = 'audio/clean_audio.wav'
     playsound(filename)
 
@@ -79,21 +78,21 @@ def main_app():
                     print("Time over, thanks")
                     text = r.recognize_google(audio_text)
                     print("You: " + text)
-                    # text = "Nike is not doing enough to help save the planet!!!"
 
+                    # text = input("Enter text here: ")
                     # get goodbye from text and stop app
                     res = re.findall(r'\w+', text)
                     if "goodbye" in res and len(res) == 1:
                         break
 
                     user_sentiment_on_brands = get_sentiment(text) + ". " + text
-
+                    print(user_sentiment_on_brands)
                     GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
 
                     if source is None:
                         continue
         elif inputText == 'customer support':
-            TextToSpeech.textToSpeechAudio("I can't give you any support at the moment.")
+            TextToSpeech.textToSpeechAudio("I can't give you any support at this moment.")
             filename = 'audio/clean_audio.wav'
             playsound(filename)
             os.remove(filename)

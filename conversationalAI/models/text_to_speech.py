@@ -12,6 +12,8 @@ from TTS.utils.audio import AudioProcessor
 from TTS.utils.synthesis import synthesis
 from TTS.vocoder.utils.generic_utils import setup_generator
 
+import warnings
+warnings.filterwarnings('ignore')
 
 class TextToSpeech:
     use_cuda = False

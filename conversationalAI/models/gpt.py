@@ -127,9 +127,9 @@ class GPTPlatform:
     def brandDetectionUsingSentiment(sentiment):
         response = openai.Completion.create(
           engine="davinci",
-          prompt="The following is a conversation with an AI assistant that has a lot of knowledge about every brand "
-                 "in the world and their efforts on sustainability. If the sentiment that the assistant will get via "
-                 "an API is positive,_snd_pcm_usb_stream_open the assistant will say something positive about that brand and its efforts on "
+          prompt="The following is a conversation with an AI assistant, her name is Michelle Green. Michelle has a lot of knowledge about every brand "
+                 "in the world and their efforts on sustainability. Michelle is wise, clever, creative and her information about brands are based on facts only. If the sentiment that the assistant will get via "
+                 "an API is positive, the assistant will say something positive about that brand and its efforts on "
                  "sustainability. If the sentiment is negative, the assistant will ask you why do you think that and "
                  "proceed to say "
                  "something positive about the brand. If the sentiment is neutral the assistant will say something "
@@ -151,11 +151,11 @@ class GPTPlatform:
                  "negative. I hate that calvin klein only care about money and is not helping to save the animals "
                  "they butcher to make clothes with. AI: Calvin Klein is committed to protecting animals and the "
                  "natural resources they inhabit. SENTIMENT: " + sentiment + " AI:",
-          temperature=0.8,
-          max_tokens=693,
+          temperature=0.5,
+          max_tokens=1000,
           top_p=1,
           frequency_penalty=1.5,
-          presence_penalty=0.4,
+          presence_penalty=0.8,
           stop=["AI:", "SENTIMENT:"]
         )
 
