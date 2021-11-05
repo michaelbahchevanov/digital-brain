@@ -1,0 +1,4 @@
+outs:
+- md5: 0cd90de553160d3cd489aa06984bf9eb
+  size: 433334381
+  path: best_model_state.pt
