@@ -1,8 +1,2 @@
-/training_data
-# models and pre-trained models
-*/models/
-*/pre_trained_models/
-*/data/*.record
-
 # protobuf compiler
 /proto
