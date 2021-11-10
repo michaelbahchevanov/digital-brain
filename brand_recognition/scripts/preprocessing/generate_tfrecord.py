@@ -99,7 +99,7 @@ def xml_to_csv(path):
 
 
 def class_text_to_int(row_label):
-    return label_map_dict[row_label]
+    return label_map_dict[row_label.lower()]
 
 
 def split(df, group):
@@ -150,7 +150,6 @@ def create_tf_example(group, path):
 
 
 def main(_):
-
     writer = tf.python_io.TFRecordWriter(args.output_path)
     path = os.path.join(args.image_dir)
     examples = xml_to_csv(args.xml_dir)

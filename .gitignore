@@ -153,3 +153,7 @@ digital-brain-venv/
 
 # Trained and pre-trained models
 */pre_trained_models
+
+# Model checkpoints
+*.data*
+*.index*
