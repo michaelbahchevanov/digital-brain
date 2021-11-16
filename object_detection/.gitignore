@@ -1,0 +1,8 @@
+# protobuf compiler
+/proto
+
+# pre-trained models
+*/models
+
+# TF Object Detection API
+*/object_detection

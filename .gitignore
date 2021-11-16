@@ -143,3 +143,18 @@ cython_debug/
 
 # venv
 digital-brain-venv/
+
+# training data for models
+*/training_data/
+
+# Externals for training
+*/cocoapi/
+*/models/
+*/protoc/
+
+# Trained and pre-trained models
+*/pre_trained_models
+
+# Model checkpoints
+*.data*
+*.index*
