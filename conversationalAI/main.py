@@ -85,9 +85,11 @@ def main_app():
                     if "goodbye" in res and len(res) == 1:
                         break
 
-                    user_sentiment_on_brands = get_sentiment(text) + ". " + text
-                    print(user_sentiment_on_brands)
-                    GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
+                    # user_sentiment_on_brands = get_sentiment(text) + ". " + text
+                    user_intent = GPTPlatform.intentClassifier(text) + " " + text
+
+                    # GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
+                    GPTPlatform.conversationWithIntent(user_intent)
 
                     if source is None:
                         continue
@@ -121,6 +123,16 @@ def start_cv():
     capture.cleanup()
 
 
+from concurrent.futures import ThreadPoolExecutor
+
+def run_io_tasks_in_parallel(tasks):
+    with ThreadPoolExecutor() as executor:
+        running_tasks = [executor.submit(task) for task in tasks]
+        for running_task in running_tasks:
+            running_task.result()
+
+
+
 def main():
     while True:
         init = start_cv()
@@ -137,5 +149,10 @@ def main():
                 continue
 
 
+
 if __name__ == '__main__':
-    main()
+    # main()
+    run_io_tasks_in_parallel([
+        start_cv(),
+        main_app(),
+    ])

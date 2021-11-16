@@ -6,6 +6,9 @@ from .text_to_speech import TextToSpeech
 import configparser
 
 
+###
+## Method to get the api key of OpenAI
+###
 def get_api_key():
     config = configparser.ConfigParser()
     config.read('helpers/config.ini')
@@ -46,7 +49,7 @@ class GPTPlatform:
         whitespaced_response = response['choices'][0]['text']
 
         if whitespaced_response[-1].isspace():
-            newstring = whitespaced_response[:-1]+'.'
+            newstring = whitespaced_response[:-1] + '.'
 
         if response['choices'][0]['text'] == "":
             GPTPlatform.gptContextModel(convo)
@@ -77,6 +80,7 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
+    #
     def brandDetecion(brand):
         response = openai.Completion.create(
             engine="davinci",
@@ -115,7 +119,7 @@ class GPTPlatform:
         whitespaced_response = response['choices'][0]['text']
 
         if whitespaced_response[-1].isspace():
-            newstring = whitespaced_response[:-1]+'.'
+            newstring = whitespaced_response[:-1] + '.'
 
         print("Michelle Green:" + newstring)
         TextToSpeech.textToSpeechAudio(newstring)
@@ -123,49 +127,130 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
-
     def brandDetectionUsingSentiment(sentiment):
         response = openai.Completion.create(
-          engine="davinci",
-          prompt="The following is a conversation with an AI assistant, her name is Michelle Green. Michelle has a lot of knowledge about every brand "
-                 "in the world and their efforts on sustainability. Michelle is wise, clever, creative and her information about brands are based on facts only. If the sentiment that the assistant will get via "
-                 "an API is positive, the assistant will say something positive about that brand and its efforts on "
-                 "sustainability. If the sentiment is negative, the assistant will ask you why do you think that and "
-                 "proceed to say "
-                 "something positive about the brand. If the sentiment is neutral the assistant will say something "
-                 "positive about that brand and its efforts on sustainability. SENTIMENT: negative. I don't "
-                 "believe Nike is doing enough to help save the planet. AI: But the brand uses recycled materials in "
-                 "its products. They are also making efforts to reduce energy consumption with their product design "
-                 "and manufacturing process. SENTIMENT: positive. I like that Apple is making efforts to continually "
-                 "improve the environment. AI: That is a very smart move. Just last year, Apple invested $4 billion "
-                 "in renewable energy and claims to be the largest corporate buyer of green power in the "
-                 "world. SENTIMENT: negative. I don't believe Patagonia cares about the planet. AI: You are "
-                 "incorrect. Patagonia is committed to conservation and environmental activism. The company has "
-                 "donated millions of dollars to organizations like the Waterkeeper Alliance, which is dedicated to "
-                 "protecting waterways throughout the world. SENTIMENT: neutral. Do you think that scotch & soda "
-                 "cares about saving the planet? AI: Scotch & soda is an apparel brand that sells clothing produced "
-                 "ethically and sustainably. SENTIMENT: neutral. I think that Microsoft is really making efforts to "
-                 "make the world a better place. AI: I am glad you recognize Microsoft for their efforts in "
-                 "sustainability. The company is committed to achieving net-zero cloud emissions by 2012, which means "
-                 "it will use clean energy sources to offset its environmental impact on the planet. SENTIMENT: "
-                 "negative. I hate that calvin klein only care about money and is not helping to save the animals "
-                 "they butcher to make clothes with. AI: Calvin Klein is committed to protecting animals and the "
-                 "natural resources they inhabit. SENTIMENT: " + sentiment + " AI:",
-          temperature=0.5,
-          max_tokens=1000,
-          top_p=1,
-          frequency_penalty=1.5,
-          presence_penalty=0.8,
-          stop=["AI:", "SENTIMENT:"]
+            engine="davinci",
+            prompt="The following is a conversation with an AI assistant, her name is Michelle Green. Michelle has a lot of knowledge about every brand "
+                   "in the world and their efforts on sustainability. Michelle is wise, clever, creative and her information about brands are based on facts only. If the sentiment that the assistant will get via "
+                   "an API is positive, the assistant will say something positive about that brand and its efforts on "
+                   "sustainability. If the sentiment is negative, the assistant will ask you why do you think that and "
+                   "proceed to say "
+                   "something positive about the brand. If the sentiment is neutral the assistant will say something "
+                   "positive about that brand and its efforts on sustainability. SENTIMENT: negative. I don't "
+                   "believe Nike is doing enough to help save the planet. AI: But the brand uses recycled materials in "
+                   "its products. They are also making efforts to reduce energy consumption with their product design "
+                   "and manufacturing process. SENTIMENT: positive. I like that Apple is making efforts to continually "
+                   "improve the environment. AI: That is a very smart move. Just last year, Apple invested $4 billion "
+                   "in renewable energy and claims to be the largest corporate buyer of green power in the "
+                   "world. SENTIMENT: negative. I don't believe Patagonia cares about the planet. AI: You are "
+                   "incorrect. Patagonia is committed to conservation and environmental activism. The company has "
+                   "donated millions of dollars to organizations like the Waterkeeper Alliance, which is dedicated to "
+                   "protecting waterways throughout the world. SENTIMENT: neutral. Do you think that scotch & soda "
+                   "cares about saving the planet? AI: Scotch & soda is an apparel brand that sells clothing produced "
+                   "ethically and sustainably. SENTIMENT: neutral. I think that Microsoft is really making efforts to "
+                   "make the world a better place. AI: I am glad you recognize Microsoft for their efforts in "
+                   "sustainability. The company is committed to achieving net-zero cloud emissions by 2012, which means "
+                   "it will use clean energy sources to offset its environmental impact on the planet. SENTIMENT: "
+                   "negative. I hate that calvin klein only care about money and is not helping to save the animals "
+                   "they butcher to make clothes with. AI: Calvin Klein is committed to protecting animals and the "
+                   "natural resources they inhabit. SENTIMENT: " + sentiment + " AI:",
+            temperature=0.5,
+            max_tokens=1000,
+            top_p=1,
+            frequency_penalty=1.5,
+            presence_penalty=0.8,
+            stop=["AI:", "SENTIMENT:"]
         )
 
         whitespaced_response = response['choices'][0]['text']
 
         if whitespaced_response[-1].isspace():
-            newstring = whitespaced_response[:-1]+'.'
+            newstring = whitespaced_response[:-1] + '.'
 
         print("Michelle Green:" + newstring)
         TextToSpeech.textToSpeechAudio(newstring)
         filename = 'audio/clean_audio.wav'
         playsound(filename)
         os.remove(filename)
+
+    def intentClassifier(sentence):
+
+        response = openai.Completion.create(
+            engine="davinci",
+            prompt="The following are the intents that the model is able to classify: GetCurrentDate, Weather, RemoveFromCart, AddToCart, SearchCart."
+                   "Text: Add this product to my shopping cart."
+                   "Intent: AddToCart."
+                   "Text: Remove the jeans from my cart."
+                   "Intent: RemoveFromCart."
+                   "Text: What is the date of today?"
+                   "Intent: GetCurrentDate."
+                   "Text: How many degrees is it in Amsterdam?"
+                   "Intent: Weather."
+                   "Text: Add the winter jacket from Daily Paper to the shopping cart."
+                   "Intent: AddToCart."
+                   "Text: I want to know the weather forecast for tonight."
+                   "Intent: Weather."
+                   "Text: What is the most expensive item in my shopping cart?"
+                   "Intent: SearchCart."
+                   "Text: How many items do I have in my cart?"
+                   "Intent: SearchCart"
+                   "Text: Add this bag to the cart."
+                   "Intent: AddToCart."
+                   "Intent: AddToCart."
+                   "Text: Is there a winter jacket in my cart?"
+                   "Intent: SearchCart"
+                   "Text: " + sentence +
+                   "Intent:",
+            temperature=0,
+            max_tokens=15,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=["Text:", "Intent:"]
+        )
+
+        intention = response['choices'][0]['text']
+
+        return intention
+
+    def conversationWithIntent(intent_text):
+        response = openai.Completion.create(
+            engine="davinci",
+            prompt="The following is a conversation with an in-store virtual assistant. The assistant is helpful, "
+                   "creative, clever, and very friendly. The assistant will get the intent of a text via an API. The "
+                   "assistant will do what the customer's intention is and do what the customer wants."
+                   "Human: AddToCart. Add this item to my shopping cart. "
+                   "AI: Okay, the item has been added to your shopping cart."
+                   "Human: RemoveFromCart. Remove all jackets over 100 euros from the cart."
+                   "AI: All jackets over 100 euros have been removed from the shopping cart. "
+                   "Human: SearchCart. Search for jeans with the color black in my shopping cart."
+                   "AI: Here's a list of all the black jeans in your shopping cart."
+                   "Human: AddToCart. Add the most expensive jacket in the store to my shopping cart."
+                   "AI: Okay, the most expensive jacket in the store has been added to your shopping cart."
+                   "Human: Weather. What is the weather forecast for tomorrow?"
+                   "AI: Tomorrow is going to be sunny with a high of 21 degrees."
+                   "Human: RemoveFromCart. Remove the Calvin Klein jacket from my cart."
+                   "AI: The Calvin Klein jacket has been removed from your shopping cart."
+                   "AI: Is there anything else I can do for you?"
+                   "Human: Yes."
+                   "AI: Okay, what would you like me to do?"
+                   "Human: " + intent_text +
+                   "AI:",
+            temperature=0.4,
+            max_tokens=500,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0.6,
+            stop=["AI:", "Human:"]
+        )
+
+        whitespaced_response = response['choices'][0]['text']
+        print(whitespaced_response)
+        # if whitespaced_response[-1].isspace():
+        #     newstring = whitespaced_response[:-1] + '.'
+        #
+        # print("Michelle Green:" + newstring)
+        # TextToSpeech.textToSpeechAudio(newstring)
+        # filename = 'audio/clean_audio.wav'
+        # playsound(filename)
+        # os.remove(filename)
