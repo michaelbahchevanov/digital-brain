@@ -29,6 +29,28 @@ class SentimentClassifier(nn.Module):
     device = torch.device("cpu")
     class_names = ['negative', 'neutral', 'positive']
 
+    # Method to get sentiment based speech converted to text - STT
+    def get_sentiment(sentiment):
+        model = SentimentClassifier.load_sentiment_model()
+
+        encoded_review = SentimentClassifier.tokenizer.encode_plus(
+            sentiment,
+            max_length=SentimentClassifier.MAX_LEN,
+            add_special_tokens=True,
+            return_token_type_ids=False,
+            padding=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+            truncation=True,
+        )
+
+        input_ids = encoded_review['input_ids'].to(SentimentClassifier.device)
+        attention_mask = encoded_review['attention_mask'].to(SentimentClassifier.device)
+
+        output = model(input_ids, attention_mask)
+        _, prediction = torch.max(output, dim=1)
+
+        return SentimentClassifier.class_names[prediction]
 
     def __init__(self, n_classes):
         super(SentimentClassifier, self).__init__()

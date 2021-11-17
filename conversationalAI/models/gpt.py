@@ -6,9 +6,7 @@ from .text_to_speech import TextToSpeech
 import configparser
 
 
-###
-## Method to get the api key of OpenAI
-###
+# Method to get the api key of OpenAI
 def get_api_key():
     config = configparser.ConfigParser()
     config.read('helpers/config.ini')
@@ -80,7 +78,7 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
-    #
+    # Method to do detection of brand's sustainability efforts
     def brandDetecion(brand):
         response = openai.Completion.create(
             engine="davinci",
@@ -127,6 +125,7 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
+    # Method to do sentiment analysis on user's input based on brand's sustainability efforts
     def brandDetectionUsingSentiment(sentiment):
         response = openai.Completion.create(
             engine="davinci",
@@ -173,6 +172,7 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
+    # Method to do intent classification
     def intentClassifier(sentence):
 
         response = openai.Completion.create(
@@ -213,7 +213,9 @@ class GPTPlatform:
 
         return intention
 
+    # Method to for conversational AI with intent classification
     def conversationWithIntent(intent_text):
+        newstring = ""
         response = openai.Completion.create(
             engine="davinci",
             prompt="The following is a conversation with an in-store virtual assistant. The assistant is helpful, "
@@ -245,12 +247,15 @@ class GPTPlatform:
         )
 
         whitespaced_response = response['choices'][0]['text']
-        print(whitespaced_response)
-        # if whitespaced_response[-1].isspace():
-        #     newstring = whitespaced_response[:-1] + '.'
-        #
-        # print("Michelle Green:" + newstring)
-        # TextToSpeech.textToSpeechAudio(newstring)
-        # filename = 'audio/clean_audio.wav'
-        # playsound(filename)
-        # os.remove(filename)
+
+        if whitespaced_response[-1].isspace():
+            newstring = whitespaced_response[:-1] + '.'
+        else:
+            newstring = whitespaced_response[:-1] + '.'
+
+
+        print("Michelle Green:" + newstring)
+        TextToSpeech.textToSpeechAudio(newstring)
+        filename = 'audio/clean_audio.wav'
+        playsound(filename)
+        os.remove(filename)
