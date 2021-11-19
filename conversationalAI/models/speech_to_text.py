@@ -12,22 +12,28 @@ class SpeechToText:
     def speechToText(start):
         r = sr.Recognizer()
         with sr.Microphone() as source:
-            print("Speak when you hear DING!!!")
-            playsound("audio/convo_prompt_2.mp3")
-            r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
-            audio_text = r.listen(source, timeout=4)
-            print("Time over, thanks")
-            text = r.recognize_google(audio_text)
-            print("You: " + text)
+            # print("Speak when you hear DING!!!")
+            # playsound("audio/convo_prompt_2.mp3")
+            # r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
+            # audio_text = r.listen(source, timeout=4)
+            # print("Time over, thanks")
+            # text = r.recognize_google(audio_text)
+            # print("You: " + text)
 
-            # text = input("Enter text here: ")
+            text = input("Enter text here: ")
 
-            # get goodbye from text and stop running
+            # # get goodbye from text and stop running
             res = re.findall(r'\w+', text)
             if "goodbye" in res and len(res) == 1:
                 return "stop"
 
-            if source is None:
-                return True
+            # if not source:
+            #     print('continue')
+            #     # return True
+            # # else:
+            # #     print('empty')
 
+            # stop_listening = r.listen_in_background(m, callback)
+            # print(stop_listening)
             return text
+

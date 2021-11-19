@@ -33,18 +33,19 @@ def detect_person_initial():
 
 # method that start the conversational application
 def main_app():
-    topics = ['intent', 'sentiment']
+    topics = ['intent', 'sentiment', 'conversation']
     print(topics)
 
-    TextToSpeech.textToSpeechAudio("Choose a demo. Intent Classification or Sentiment Classification. After choosing, speak when you hear the ding!")
-    filename = 'audio/clean_audio.wav'
-    playsound(filename)
+    # TextToSpeech.textToSpeechAudio("Choose a demo. Intent Classification or Sentiment Classification. After choosing, speak when you hear the ding!")
+    # filename = 'audio/clean_audio.wav'
+    # playsound(filename)
 
     try:
         inputText = input('Choose a topic: ')
         if inputText == 'intent':
             while True:
                 text = SpeechToText.speechToText("start")
+                print(text)
                 if text == 'stop':
                     return False
                 else:
@@ -58,6 +59,15 @@ def main_app():
                 else:
                     user_sentiment_on_brands = SentimentClassifier.get_sentiment(text) + ". " + text
                     GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
+        elif inputText == 'conversation':
+            while True:
+                text = SpeechToText.speechToText("start")
+                if text == 'stop':
+                    return False
+                else:
+                    user_input = SentimentClassifier.get_sentiment(text) + "." + GPTPlatform.intentClassifier(text) + ". " + text
+                    print(user_input)
+                    GPTPlatform.conversationWithVirtualAssistant(user_input)
     except Exception as e:
         print(e)
         print("Conversation ended.")
