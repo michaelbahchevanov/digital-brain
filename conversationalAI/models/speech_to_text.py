@@ -21,17 +21,12 @@ class SpeechToText:
             # print("You: " + text)
 
             text = input("Enter text here: ")
+            print("You: " + text)
 
             # # get goodbye from text and stop running
             res = re.findall(r'\w+', text)
             if "goodbye" in res and len(res) == 1:
                 return "stop"
-
-            # if not source:
-            #     print('continue')
-            #     # return True
-            # # else:
-            # #     print('empty')
 
             # stop_listening = r.listen_in_background(m, callback)
             # print(stop_listening)

@@ -4,7 +4,13 @@ from playsound import playsound
 
 from .text_to_speech import TextToSpeech
 import configparser
+from tkinter import *
 
+# window = Tk()
+# window.geometry('300x200')
+
+# label = Label(window, text='Choose Task')
+# task = Entry(window)
 
 # Method to get the api key of OpenAI
 def get_api_key():
@@ -226,9 +232,12 @@ class GPTPlatform:
 
         return intention
 
+
+    # whitespaced_response = "."
     # Method to for conversational AI with intent classification
     def conversationWithIntent(intent_text):
         newstring = ""
+        # global whitespaced_response
         response = openai.Completion.create(
             engine="davinci",
             prompt="The following is a conversation with an in-store virtual assistant and a customer named Louis. "
@@ -261,6 +270,7 @@ class GPTPlatform:
         )
 
         whitespaced_response = response['choices'][0]['text']
+        # return conversationWithIntent.whitespaced_response
 
         if whitespaced_response[-1].isspace():
             newstring = whitespaced_response[:-1] + '.'
@@ -276,9 +286,10 @@ class GPTPlatform:
     def conversationWithVirtualAssistant(converse):
         newstring = ""
         response = openai.Completion.create(
-            engine="davinci",
-            prompt="The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, "
-                   "and very friendly. The assistant will get the sentiment and intent of a text via an API. The "
+            engine="davinci-instruct-beta",
+            prompt="The following is a conversation with an virtual assistant. The assistant is helpful, creative, clever, "
+                   "and very friendly. The virtual assistant is a fashionista and can give good recommendations on what would look good with a certain item."
+                   "The assistant will get the sentiment and intent of a text via an API. The "
                    "assistant will be able to understand the following sentiments: positive, neutral, negative. If "
                    "the sentiment is positive the assistant will do whatever the customer's intention was. If the "
                    "sentiment is neutral the assistant will do whatever the customer's intention was. If the "
@@ -305,11 +316,11 @@ class GPTPlatform:
                    "the store. AI: Okay, here's a list of the cheapest shoes in the store. Human: neutral. "
                    "AddToCart. Pick the cheapest shoes from the list and add it to my shopping cart. AI: Okay, "
                    "I have added the shoes to your shopping cart. Human: " + converse + "AI:",
-            temperature=0.8,
+            temperature=0.6,
             max_tokens=800,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0.6,
+            top_p=0,
+            frequency_penalty=1,
+            presence_penalty=1.2,
             stop=["Human:", "AI:"]
         )
 
@@ -325,3 +336,22 @@ class GPTPlatform:
         filename = 'audio/clean_audio.wav'
         playsound(filename)
         os.remove(filename)
+
+
+# def getResponse():
+#     label_2 = Label(window, text=GPTPlatform, font= ('Century 15 bold'))
+#     label_2.pack()
+
+# button = Button(window, text="QUIT", fg="red", command=window.quit)
+# hi_there = Button(window, text="Hello", command=getResponse)
+
+# ourMessage ='This is our Message'
+# messageVar = Message(window, text = ourMessage)
+# messageVar.config(bg='lightgreen')
+
+# task.pack()
+# label.pack()
+# # messageVar.pack()
+# button.pack(side=LEFT)
+# hi_there.pack(side=LEFT)
+# window.mainloop()
