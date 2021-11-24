@@ -6,6 +6,7 @@ from .text_to_speech import TextToSpeech
 import configparser
 from tkinter import *
 
+
 # window = Tk()
 # window.geometry('300x200')
 
@@ -180,7 +181,6 @@ class GPTPlatform:
 
     # Method to do intent classification
     def intentClassifier(sentence):
-
         response = openai.Completion.create(
             engine="davinci",
             prompt="The following are the intents that the model is able to classify: GetCurrentDate, Weather, RemoveFromCart, AddToCart, SearchCart."
@@ -192,31 +192,15 @@ class GPTPlatform:
                    "Intent: ConverseWithAI"
                    "Text: Where can I find clothes for kids?"
                    "Intent: SearchStore"
-                   "Text: What is the date of today?"
-                   "Intent: GetCurrentDate"
                    "Text: These jeans look great on me! I really like it"
                    "Intent: ConverseWithAI"
-                   "Text: How many degrees is it in Amsterdam?"
-                   "Intent: Weather"
-                   "Text: Add the winter jacket from Daily Paper to the shopping cart."
-                   "Intent: AddToCart"
                    "Text: I like the design of this t-shirt, what do you think of it?"
                    "Intent: ConverseWithAI"
-                   "Text: I want to know the weather forecast for tonight."
-                   "Intent: Weather"
+                   "Text: Hello"
+                   "Intent: ConverseWithAI"
                    "Text: Search for the cheapest shoes in the store."
                    "Intent: SearchStore"
                    "Text: What is the most expensive item in my shopping cart?"
-                   "Intent: SearchCart"
-                   "Text: It annoys me when there's no one around to help me."
-                   "Intent: ConverseWithAI"
-                   "Text: How many items do I have in my cart?"
-                   "Intent: SearchCart"
-                   "Text: Add this bag to the cart."
-                   "Intent: AddToCart"
-                   "Text: Where do I men's section?"
-                   "Intent: SearchStore"
-                   "Text: Is there a winter jacket in my cart?"
                    "Intent: SearchCart"
                    "Text: " + sentence +
                    "Intent:",
@@ -232,12 +216,10 @@ class GPTPlatform:
 
         return intention
 
-
-    # whitespaced_response = "."
-    # Method to for conversational AI with intent classification
+    # Method for a conversational AI that understands intention (intent classification)
     def conversationWithIntent(intent_text):
         newstring = ""
-        # global whitespaced_response
+
         response = openai.Completion.create(
             engine="davinci",
             prompt="The following is a conversation with an in-store virtual assistant and a customer named Louis. "
@@ -270,7 +252,6 @@ class GPTPlatform:
         )
 
         whitespaced_response = response['choices'][0]['text']
-        # return conversationWithIntent.whitespaced_response
 
         if whitespaced_response[-1].isspace():
             newstring = whitespaced_response[:-1] + '.'
@@ -283,49 +264,25 @@ class GPTPlatform:
         playsound(filename)
         os.remove(filename)
 
+    # Method for a conversation with a virtual assistant (with context of a in-store virtual assistant)
     def conversationWithVirtualAssistant(converse):
-        newstring = ""
+
         response = openai.Completion.create(
             engine="davinci-instruct-beta",
-            prompt="The following is a conversation with an virtual assistant. The assistant is helpful, creative, clever, "
-                   "and very friendly. The virtual assistant is a fashionista and can give good recommendations on what would look good with a certain item."
-                   "The assistant will get the sentiment and intent of a text via an API. The "
-                   "assistant will be able to understand the following sentiments: positive, neutral, negative. If "
-                   "the sentiment is positive the assistant will do whatever the customer's intention was. If the "
-                   "sentiment is neutral the assistant will do whatever the customer's intention was. If the "
-                   "sentiment is negative the assistant will ask the customer what is wrong and what the assistant "
-                   "can do to help the situation. Human: Hello, who are you? AI: I am an AI created by OpenAI. "
-                   "How can I help you today? Human: neutral. AddToCart. Add this item to my shopping cart.  AI: "
-                   "Okay, the item has been added to your shopping cart. Human: negative. ConverseWithAI. I don't "
-                   "like how this jacket looks on me. AI: Is there a reason why you don't like the jacket? Human: "
-                   "neutral. RemoveFromCart. Yes, there's a reason, the jacket is too short, please remove the jacket "
-                   "from the cart. AI: The jacket has been removed from the shopping cart.  Human: neutral. "
-                   "SearchCart. Search for jeans with the color black in my shopping cart. AI: Here's a list of all "
-                   "the black jeans in your shopping cart. Human: positive. ConverseWithAI. These jeans look great "
-                   "on me! I really like it. AI: It fits you so well. Would you like me to add these jeans to your "
-                   "shopping cart? Human: neutral. AddToCart. Yes, add the jeans to my shopping cart. AI: Okay, "
-                   "I have added the jeans to your shopping cart. Human: neutral. Weather. What is the weather "
-                   "forecast for tomorrow? AI: Tomorrow is going to be sunny with a high of 21 degrees. AI: Is "
-                   "there anything else I can do for you? Human: Yes. AI: Okay, what would you like me to "
-                   "do? Human: positive. ConverseWithAI. I like the design of this t-shirt, what do you think of "
-                   "it? AI: I like the design of this t-shirt too. What color do you want? Human: neutral. "
-                   "ConverseWithAI. I want a black one. AI: Okay, I will get you one in black. Human: neutral. "
-                   "AddToCart. Can you add it to my cart? AI: Okay, I have added the t-shirt to your shopping "
-                   "cart. Human: negative. ConverseWithAI. It annoys me when there's no one around to help me. AI: "
-                   "I can help you. Please go ahead. Human: neutral. SearchStore. Search for the cheapest shoes in "
-                   "the store. AI: Okay, here's a list of the cheapest shoes in the store. Human: neutral. "
-                   "AddToCart. Pick the cheapest shoes from the list and add it to my shopping cart. AI: Okay, "
-                   "I have added the shoes to your shopping cart. Human: " + converse + "AI:",
+            prompt=converse,
             temperature=0.6,
-            max_tokens=800,
-            top_p=0,
+            max_tokens=100,
+            top_p=1,
             frequency_penalty=1,
-            presence_penalty=1.2,
+            presence_penalty=0.6,
             stop=["Human:", "AI:"]
         )
+        print(response)
 
         whitespaced_response = response['choices'][0]['text']
 
+        new_prompt = converse + whitespaced_response
+
         if whitespaced_response[-1].isspace():
             newstring = whitespaced_response[:-1] + '.'
         else:
@@ -336,6 +293,11 @@ class GPTPlatform:
         filename = 'audio/clean_audio.wav'
         playsound(filename)
         os.remove(filename)
+
+        return whitespaced_response, new_prompt
+
+
+
 
 
 # def getResponse():
