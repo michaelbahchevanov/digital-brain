@@ -4,14 +4,7 @@ from playsound import playsound
 
 from .text_to_speech import TextToSpeech
 import configparser
-from tkinter import *
 
-
-# window = Tk()
-# window.geometry('300x200')
-
-# label = Label(window, text='Choose Task')
-# task = Entry(window)
 
 # Method to get the api key of OpenAI
 def get_api_key():
@@ -81,7 +74,8 @@ class GPTPlatform:
         )
 
         TextToSpeech.textToSpeechAudio(provided_answer['answers'][0])
-        filename = '../clean_audio.wav'
+        print(provided_answer['answers'][0])
+        filename = 'audio/clean_audio.wav'
         playsound(filename)
         os.remove(filename)
 
@@ -265,19 +259,18 @@ class GPTPlatform:
         os.remove(filename)
 
     # Method for a conversation with a virtual assistant (with context of a in-store virtual assistant)
-    def conversationWithVirtualAssistant(converse):
+    def conversationWithVirtualAssistant(converse, name):
 
         response = openai.Completion.create(
-            engine="davinci-instruct-beta",
+            engine="davinci-instruct-beta-v3",
             prompt=converse,
-            temperature=0.6,
-            max_tokens=100,
+            temperature=0.5,
+            max_tokens=150,
             top_p=1,
             frequency_penalty=1,
-            presence_penalty=0.6,
-            stop=["Human:", "AI:"]
+            presence_penalty=0.9,
+            stop=[name+":", "Michelle:"]
         )
-        print(response)
 
         whitespaced_response = response['choices'][0]['text']
 
@@ -286,7 +279,7 @@ class GPTPlatform:
         if whitespaced_response[-1].isspace():
             newstring = whitespaced_response[:-1] + '.'
         else:
-            newstring = whitespaced_response[:-1] + '.'
+            newstring = whitespaced_response[:-1]
 
         print("Michelle Green:" + newstring)
         TextToSpeech.textToSpeechAudio(newstring)
@@ -295,25 +288,3 @@ class GPTPlatform:
         os.remove(filename)
 
         return whitespaced_response, new_prompt
-
-
-
-
-
-# def getResponse():
-#     label_2 = Label(window, text=GPTPlatform, font= ('Century 15 bold'))
-#     label_2.pack()
-
-# button = Button(window, text="QUIT", fg="red", command=window.quit)
-# hi_there = Button(window, text="Hello", command=getResponse)
-
-# ourMessage ='This is our Message'
-# messageVar = Message(window, text = ourMessage)
-# messageVar.config(bg='lightgreen')
-
-# task.pack()
-# label.pack()
-# # messageVar.pack()
-# button.pack(side=LEFT)
-# hi_there.pack(side=LEFT)
-# window.mainloop()
