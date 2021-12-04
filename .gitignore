@@ -158,3 +158,6 @@ digital-brain-venv/
 # Model checkpoints
 *.data*
 *.index*
+
+# MacOS smth
+.DS_Store
