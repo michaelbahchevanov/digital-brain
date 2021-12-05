@@ -1,5 +1,4 @@
 import os
-
 from playsound import playsound
 from models.gpt import GPTPlatform
 from digital_brain.computer_vision.model.utils.capture import Capture
@@ -10,6 +9,7 @@ from models.brand_sentiment_analysis import *
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 from tkinter import *
+import PySimpleGUI as sg
 
 
 # Method using ThreadPoolExecutor to run tasks concurrently
@@ -64,43 +64,33 @@ def main_app(name):
     topics = ['intent', 'sentiment', 'conversation']
     print(topics)
 
+    products = [
+        {'Name': 'SLIM FIT JEANS', 'Price': 25, 'Colors': ['blue', 'light blue', 'black', 'gray', 'light brown']},
+        {'Name': 'LOOSE FIT JEANS', 'Price': 35, 'Colors': ['navy blue', 'taupe brown', 'black', 'blue']},
+        {'Name': 'BASIC SKINNY JEANS', 'Price': 45, 'Colors': ['light blue', 'mid-blue', 'black', 'blue', 'charcoal']},
+        {'Name': 'CARGO JEANS WITH SEAM DETAILS', 'Price': 19, 'Colors': ['khaki', 'gray', 'black']}]
+
     # TextToSpeech.textToSpeechAudio("Choose a demo. Intent or Sentiment Classification, or just a conversation with your virtual assistant. After choosing, speak when you hear the ding!")
     # filename = 'audio/clean_audio.wav'
     # playsound(filename)
 
-    start_prompt = "The following is a conversation with Michelle Green and " + name + ". Michelle is " + name + "'s personal " \
-                   "in-store virtual assistant of Zara. " + name + " is a male and has an account at Zara and his favorite colors are black and brown. " \
-                                                                  "Michelle is helpful, creative, clever, and very friendly. " \
-                                                                  "Michelle recognizes the following intents: " \
-                                                                  "AddToCart, ConverseWithAI, RemoveFromCart, " \
-                                                                  "SearchCart, and SearchStore. " \
-                                                                  "Michelle recognizes " \
-                                                                  "the following sentiments: positive, neutral, " \
-                                                                  "and negative"
+    start_prompt = "The following is a conversation with Michelle Green, and she is a in-store virtual assistant for " \
+                   "Zara. Michelle is helpful, fashionable, smart, and very friendly.  Michelle knows that " + name + \
+                   "favorite colors are blue and black. Michelle will give product recommendations based on " + name + "'s " \
+                   "color preferences. " + name + "'s shopping cart is empty. Michelle recognizes the following sentiments: " \
+                   "positive, neutral, and negative. Michelle recognizes the following intents: AddToCart, " \
+                   "ConverseWithAI, UpdateCart, RemoveFromCart, SearchCart, ShowProduct, RecommendProduct. " \
+                   "Michelle can only provide information and recommendations for these products " + str(products) + \
+                   "Michelle will return a list of the product's name if asked, and she will add, remove, update, " \
+                   "and search cart for " + name + ". "
 
-
-    # start_prompt = "The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, " \
-    #                "and very friendly. Human: Hello, who are you? AI: I am an AI created by OpenAI. How can I help " \
-    #                "you today? Human: neutral. AddToCart. Add this item to my shopping cart.  AI: Okay, the item has " \
-    #                "been added to your shopping cart. Human: negative. ConverseWithAI. I don't like how this jacket " \
-    #                "looks on me. AI: Is there a reason why you don't like the jacket? Human: neutral. RemoveFromCart. " \
-    #                "Yes, there's a reason, the jacket is too short, please remove the jacket from the cart. AI: The " \
-    #                "jacket has been removed from the shopping cart.  Human: neutral. SearchCart. Search for jeans " \
-    #                "with the color black in my shopping cart. AI: Here's a list of all the black jeans in your " \
-    #                "shopping cart. Human: positive. ConverseWithAI. These jeans look great on me! I really like it. " \
-    #                "AI: It fits you so well. Would you like me to add these jeans to your shopping cart? Human: " \
-    #                "neutral. AddToCart. Yes, add the jeans to my shopping cart. AI: Okay, I have added the jeans to " \
-    #                "your shopping cart. Human: neutral. Weather. What is the weather forecast for tomorrow? AI: " \
-    #                "Tomorrow is going to be sunny with a high of 21 degrees. AI: Is there anything else I can do for " \
-    #                "you? Human: Yes. AI: Okay, what would you like me to do? Human: positive. ConverseWithAI. I like " \
-    #                "the design of this t-shirt, what do you think of it? AI: I like the design of this t-shirt too. " \
-    #                "What color do you want? Human: neutral. ConverseWithAI. I want a black one. AI: Okay, I will get " \
-    #                "you one in black. Human: neutral. AddToCart. Can you add it to my cart? AI: Okay, I have added " \
-    #                "the t-shirt to your shopping cart. Human: negative. ConverseWithAI. It annoys me when there's no " \
-    #                "one around to help me. AI: I can help you. Please go ahead. Human: neutral. SearchStore. Search " \
-    #                "for the cheapest shoes in the store. AI: Okay, here's a list of the cheapest shoes in the store. " \
-    #                "Human: neutral. AddToCart. Pick the cheapest shoes from the list and add it to my shopping cart. " \
-    #                "AI: Okay, I have added the shoes to your shopping cart "
+    layout = [
+        [sg.Text("Enter text here: "), sg.Input(key='-CONVO-')],
+        [sg.Button('Send'), sg.Button('Exit')],
+        [sg.Output(size=(150, 20), key='-OUTPUT-')],
+    ]
+    sg.theme('DarkPurple6')
+    window = sg.Window("Demo", layout)
 
     try:
         inputText = input('Choose a topic: ')
@@ -122,28 +112,34 @@ def main_app(name):
                     GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
         elif inputText == 'conversation':
             while True:
-                text = SpeechToText.speechToText("start")
+                event, values = window.read()
+                text = values['-CONVO-']
+
+                # text = SpeechToText.speechToText("start")
+
                 if text == 'stop':
                     return False
                 else:
-                    start_prompt += ". " + name + ": " + SentimentClassifier.get_sentiment(text) + "." + GPTPlatform.intentClassifier(text) + ". " + str(text) + ". Michelle:"
+                    if event == "Exit" or event == sg.WIN_CLOSED:
+                        break
+
+                    start_prompt += ". " + name + ": " + SentimentClassifier.get_sentiment(text) + ". " + str(text) + ". Michelle:"
                     answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
-                    print(start_prompt)
+
+                    window['-OUTPUT-'].update("You: " + text + "\n\n" + "Michelle: " + answer)
+
+                    with open('conversation_with_michelle_2.txt', 'w') as f:
+                        f.write(start_prompt)
     except Exception as e:
         print(e)
         print("Conversation ended.")
 
-    with open('conversation_with_michelle_1.txt', 'w') as f:
-        f.write(start_prompt)
-
 
 if __name__ == '__main__':
     name = input("Enter your name: ")
-
-    run_conversational_tasks([
-        # start_cv(),
-        main_app(name),
-        #
-    ])
-
-
+    main_app(name)
+    
+    # run_conversational_tasks([
+    #     # start_cv(),
+    #     main_app(name),
+    # ])

@@ -262,29 +262,31 @@ class GPTPlatform:
     def conversationWithVirtualAssistant(converse, name):
 
         response = openai.Completion.create(
-            engine="davinci-instruct-beta-v3",
+            engine="davinci-instruct-beta",
             prompt=converse,
-            temperature=0.5,
+            temperature=0.7,
             max_tokens=150,
             top_p=1,
-            frequency_penalty=1,
-            presence_penalty=0.9,
-            stop=[name+":", "Michelle:"]
+            frequency_penalty=2,
+            presence_penalty=2,
+            stop=["Michelle:", name+":"]
         )
 
         whitespaced_response = response['choices'][0]['text']
 
-        new_prompt = converse + whitespaced_response
+        new_prompt = converse + response['choices'][0]['text']
 
         if whitespaced_response[-1].isspace():
             newstring = whitespaced_response[:-1] + '.'
         else:
-            newstring = whitespaced_response[:-1]
+            newstring = whitespaced_response[:-1] + '.'
 
-        print("Michelle Green:" + newstring)
+        # print("Michelle Green:" + newstring)
+
         TextToSpeech.textToSpeechAudio(newstring)
         filename = 'audio/clean_audio.wav'
         playsound(filename)
         os.remove(filename)
 
         return whitespaced_response, new_prompt
+

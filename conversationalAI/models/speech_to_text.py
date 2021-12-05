@@ -28,7 +28,5 @@ class SpeechToText:
             if "goodbye" in res and len(res) == 1:
                 return "stop"
 
-            # stop_listening = r.listen_in_background(m, callback)
-            # print(stop_listening)
             return text
 
