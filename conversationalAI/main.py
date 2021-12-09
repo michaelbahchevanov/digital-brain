@@ -8,7 +8,6 @@ from models.speech_to_text import SpeechToText
 from models.brand_sentiment_analysis import *
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
-from tkinter import *
 import PySimpleGUI as sg
 
 
@@ -61,36 +60,57 @@ def start_cv():
 
 # method that start the conversational application
 def main_app(name):
-    topics = ['intent', 'sentiment', 'conversation']
+    topics = ['intent', 'sentiment', 'kruidvat']
     print(topics)
 
     products = [
-        {'Name': 'SLIM FIT JEANS', 'Price': 25, 'Colors': ['blue', 'light blue', 'black', 'gray', 'light brown']},
-        {'Name': 'LOOSE FIT JEANS', 'Price': 35, 'Colors': ['navy blue', 'taupe brown', 'black', 'blue']},
-        {'Name': 'BASIC SKINNY JEANS', 'Price': 45, 'Colors': ['light blue', 'mid-blue', 'black', 'blue', 'charcoal']},
-        {'Name': 'CARGO JEANS WITH SEAM DETAILS', 'Price': 19, 'Colors': ['khaki', 'gray', 'black']}]
+        {'ProductID': 1, 'Name': "L'ORÉAL PARIS MEN EXPERT HYDRA INTENSIVE 24H FACE CREAM", 'Size': '50ML', 'Price': 10.09, 'Skin Type': 'Dry'},
+        {'ProductID': 2, 'Name': 'NIVEA MEN PROTECT & CARE MOISTURIZING FACE CREAM', 'Size': '75ML', 'Price': 10.99, 'Skin Type': 'Dry'},
+        {'ProductID': 3, 'Name': "NIVEA MEN SENSITIVE MOISTURIZING FACE CREAM", 'Size': '75ML', 'Price': 11.99, 'Skin Type': 'Sensitive'},
+        {'ProductID': 4, 'Name': "L'ORÉAL PARIS MEN EXPERT HYDRA SENSITIVE MOISTURIZING FACIAL CARE", 'Size': '50ML', 'Price': 15.15, 'Skin Type': 'Sensitive'},
+        {'ProductID': 5, 'Name': "Andrélon Special Keratine Repair Shampoo", 'Size': '300ML', 'Price': 5.49, 'Hair Type': 'Dry and Fluffy'},
+        {'ProductID': 6, 'Name': "Schwarzkopf Repair & Care Shampoo", 'Size': '400ML', 'Price': 2.59, 'Hair Type': 'Dry and Fluffy'},
+        {'ProductID': 7, 'Name': "Kruidvat Sensation Tropical Shampoo", 'Size': '500ML', 'Price': 0.99, 'Hair Type': 'Normal'},
+        {'ProductID': 8, 'Name': "John Frieda Frizz Ease Dream Curls Shampoo", 'Size': '250ML', 'Price': 11.99, 'Hair Type': 'Normal'}
+    ]
 
-    # TextToSpeech.textToSpeechAudio("Choose a demo. Intent or Sentiment Classification, or just a conversation with your virtual assistant. After choosing, speak when you hear the ding!")
+    saleProducts = [
+        {'ProductID': 1, 'Sale': '2nd half price'},
+        {'ProductID': 3, 'Sale': '1 + 1 free'},
+        {'ProductID': 5, 'Sale': '1 + 1 free'},
+        {'ProductID': 7, 'Sale': '5 for 4.00 euros'}
+    ]
+
+    userProfile = [
+        {'Gender': 'Male', 'Skin Type': 'Dry', 'Hair Type': 'Dry and Fluffy'}
+    ]
+
+    # TextToSpeech.textToSpeechAudio("Choose a demo. Intent or Sentiment Classification, or use-case Kruidvat. After choosing, speak when you hear the ding!")
     # filename = 'audio/clean_audio.wav'
     # playsound(filename)
 
-    start_prompt = "The following is a conversation with Michelle Green, and she is a in-store virtual assistant for " \
-                   "Zara. Michelle is helpful, fashionable, smart, and very friendly.  Michelle knows that " + name + \
-                   "favorite colors are blue and black. Michelle will give product recommendations based on " + name + "'s " \
-                   "color preferences. " + name + "'s shopping cart is empty. Michelle recognizes the following sentiments: " \
-                   "positive, neutral, and negative. Michelle recognizes the following intents: AddToCart, " \
-                   "ConverseWithAI, UpdateCart, RemoveFromCart, SearchCart, ShowProduct, RecommendProduct. " \
-                   "Michelle can only provide information and recommendations for these products " + str(products) + \
-                   "Michelle will return a list of the product's name if asked, and she will add, remove, update, " \
-                   "and search cart for " + name + ". "
+    start_prompt = "The following is a conversation with Michelle Green, and she is a in-store AI virtual assistant for Kruidvat. " \
+                   "Michelle always starts the conversation by asking the user how they are doing. " \
+                   "Michelle is creative, helpful, smart, and very friendly. " \
+                   "Michelle can give product recommendations strictly based on " + name + "'s user profile: " + str(userProfile) + ". " \
+                   "Michelle recognizes the following sentiments: positive, neutral, and negative. " \
+                   "Michelle recognizes the following intents: AddToCart, ConverseWithAI, UpdateCart, RemoveFromCart, SearchCart, ShowProduct, ShowCart, RecommendProduct. " \
+                   "Michelle can only provide information and recommendations for this list of products identified by their ProductID " + str(products) + \
+                   ". This is the list of products identified by ProductID on sale " + str(saleProducts) + \
+                   ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
+                   + name + "'s shopping cart is empty but is updated during the conversation with Michelle. " \
+                   "Michelle will only add the items that " + name + " wants to cart, update the items he wants in the cart and she does not do something that " + name + " never asked her to do"
+
+    sg.theme('DarkTeal')
 
     layout = [
-        [sg.Text("Enter text here: "), sg.Input(key='-CONVO-')],
-        [sg.Button('Send'), sg.Button('Exit')],
+        [sg.Text("Enter text here: "), sg.Input(key='-CONVO-'), sg.Button('Send')],
+        [sg.Text("Use Voice Command"), sg.Button('Speak')],
+        [sg.Button('Exit')],
         [sg.Output(size=(150, 20), key='-OUTPUT-')],
     ]
-    sg.theme('DarkPurple6')
-    window = sg.Window("Demo", layout)
+
+    window = sg.Window("In-Store AI Virtual Assistant for Kruidvat", layout)
 
     try:
         inputText = input('Choose a topic: ')
@@ -110,26 +130,41 @@ def main_app(name):
                 else:
                     user_sentiment_on_brands = SentimentClassifier.get_sentiment(text) + ". " + text
                     GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
-        elif inputText == 'conversation':
+        elif inputText == 'kruidvat':
             while True:
                 event, values = window.read()
                 text = values['-CONVO-']
-
-                # text = SpeechToText.speechToText("start")
 
                 if text == 'stop':
                     return False
                 else:
                     if event == "Exit" or event == sg.WIN_CLOSED:
                         break
+                    elif event == "Speak":
+                        voice_text = SpeechToText.speechToText("start")
+                        text += voice_text
 
-                    start_prompt += ". " + name + ": " + SentimentClassifier.get_sentiment(text) + ". " + str(text) + ". Michelle:"
-                    answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
+                        # print(text)
 
-                    window['-OUTPUT-'].update("You: " + text + "\n\n" + "Michelle: " + answer)
+                        start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+                        answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
 
-                    with open('conversation_with_michelle_2.txt', 'w') as f:
-                        f.write(start_prompt)
+                        # print(start_prompt)
+
+                        window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+
+                        with open('conversation_with_michelle_3.txt', 'w') as f:
+                            f.write(start_prompt)
+                    elif event == 'Send':
+                        start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+                        answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
+
+                        # print(start_prompt)
+
+                        window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+
+                        with open('conversation_with_michelle_3.txt', 'w') as f:
+                            f.write(start_prompt)
     except Exception as e:
         print(e)
         print("Conversation ended.")
@@ -138,7 +173,7 @@ def main_app(name):
 if __name__ == '__main__':
     name = input("Enter your name: ")
     main_app(name)
-    
+
     # run_conversational_tasks([
     #     # start_cv(),
     #     main_app(name),

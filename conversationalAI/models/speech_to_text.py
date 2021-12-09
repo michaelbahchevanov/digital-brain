@@ -13,15 +13,15 @@ class SpeechToText:
         r = sr.Recognizer()
         with sr.Microphone() as source:
             # print("Speak when you hear DING!!!")
-            # playsound("audio/convo_prompt_2.mp3")
-            # r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
-            # audio_text = r.listen(source, timeout=4)
+            playsound("audio/convo_prompt_2.mp3")
+            r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
+            audio_text = r.listen(source, timeout=4)
             # print("Time over, thanks")
-            # text = r.recognize_google(audio_text)
+            text = r.recognize_google(audio_text)
             # print("You: " + text)
 
-            text = input("Enter text here: ")
-            print("You: " + text)
+            # text = input("Enter text here: ")
+            # print("You: " + text)
 
             # # get goodbye from text and stop running
             res = re.findall(r'\w+', text)
