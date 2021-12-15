@@ -9,6 +9,11 @@ from models.brand_sentiment_analysis import *
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import PySimpleGUI as sg
+import os.path
+import PIL.Image
+import io
+import base64
+from datetime import datetime
 
 
 # Method using ThreadPoolExecutor to run tasks concurrently
@@ -57,6 +62,52 @@ def start_cv():
 
     capture.cleanup()
 
+# Method to convert image to bytes. This method helps
+# with displaying images in python
+def convert_to_bytes(file_or_bytes, resize=None):
+    '''
+    Will convert into bytes and optionally resize an image that is a file or a base64 bytes object.
+    Turns into  PNG format in the process so that can be displayed by tkinter
+    :param file_or_bytes: either a string filename or a bytes base64 image object
+    :type file_or_bytes:  (Union[str, bytes])
+    :param resize:  optional new size
+    :type resize: (Tuple[int, int] or None)
+    :return: (bytes) a byte-string object
+    :rtype: (bytes)
+    '''
+    if isinstance(file_or_bytes, str):
+        img = PIL.Image.open(file_or_bytes)
+    else:
+        try:
+            img = PIL.Image.open(io.BytesIO(base64.b64decode(file_or_bytes)))
+        except Exception as e:
+            dataBytesIO = io.BytesIO(file_or_bytes)
+            img = PIL.Image.open(dataBytesIO)
+
+    cur_width, cur_height = img.size
+    if resize:
+        new_width, new_height = resize
+        scale = min(new_height/cur_height, new_width/cur_width)
+        img = img.resize((int(cur_width*scale), int(cur_height*scale)), PIL.Image.ANTIALIAS)
+    bio = io.BytesIO()
+    img.save(bio, format="PNG")
+    del img
+    return bio.getvalue()
+
+
+# Method to send API request to openAI and save conversation history
+def conversationLogic(text, start_prompt, name, window):
+    start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+    answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
+
+    # print(start_prompt)
+
+    window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+
+
+    with open("conversation_with_michelle_4" + "-" + datetime.now().strftime("%d/%m/%Y %H:%M:%S")+".txt", 'w') as f:
+        f.write(start_prompt)
+
 
 # method that start the conversational application
 def main_app(name):
@@ -77,12 +128,16 @@ def main_app(name):
     saleProducts = [
         {'ProductID': 1, 'Sale': '2nd half price'},
         {'ProductID': 3, 'Sale': '1 + 1 free'},
-        {'ProductID': 5, 'Sale': '1 + 1 free'},
-        {'ProductID': 7, 'Sale': '5 for 4.00 euros'}
+        {'ProductID': 5, 'Sale': '2 + 1 free'},
+        {'ProductID': 7, 'Sale': '3 + 1 free'}
     ]
 
     userProfile = [
         {'Gender': 'Male', 'Skin Type': 'Dry', 'Hair Type': 'Dry and Fluffy'}
+    ]
+
+    availabilityStore = [
+        {"City": "Eindhoven", "Location":["Binnenstad", "Bergen", "Witte Dame"]}
     ]
 
     # TextToSpeech.textToSpeechAudio("Choose a demo. Intent or Sentiment Classification, or use-case Kruidvat. After choosing, speak when you hear the ding!")
@@ -97,20 +152,25 @@ def main_app(name):
                    "Michelle recognizes the following intents: AddToCart, ConverseWithAI, UpdateCart, RemoveFromCart, SearchCart, ShowProduct, ShowCart, RecommendProduct. " \
                    "Michelle can only provide information and recommendations for this list of products identified by their ProductID " + str(products) + \
                    ". This is the list of products identified by ProductID on sale " + str(saleProducts) + \
+                   ". In between the conversation Michelle tells " + name + " random facts about Kruidvat. " + \
+                   "Michelle can let " + name + " know where in the city " + str(availabilityStore) + " they can find the product in their shopping cart" + \
                    ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
                    + name + "'s shopping cart is empty but is updated during the conversation with Michelle. " \
-                   "Michelle will only add the items that " + name + " wants to cart, update the items he wants in the cart and she does not do something that " + name + " never asked her to do"
+                   "Michelle will only add the items that " + name + " wants to cart, update the items he wants in the cart. " \
+                   "Michelle listens carefully to " + name + " needs and does exactly what he asked her to do"
 
     sg.theme('DarkTeal')
+    filename = "audio/michelle_image.png"
 
     layout = [
+        [sg.Image(data=convert_to_bytes(filename, resize=(300, 300)), key='-IMAGE-')],
         [sg.Text("Enter text here: "), sg.Input(key='-CONVO-'), sg.Button('Send')],
         [sg.Text("Use Voice Command"), sg.Button('Speak')],
         [sg.Button('Exit')],
         [sg.Output(size=(150, 20), key='-OUTPUT-')],
     ]
 
-    window = sg.Window("In-Store AI Virtual Assistant for Kruidvat", layout)
+    window = sg.Window("In-Store AI Virtual Assistant for Kruidvat", layout, resizable=True)
 
     try:
         inputText = input('Choose a topic: ')
@@ -135,6 +195,7 @@ def main_app(name):
                 event, values = window.read()
                 text = values['-CONVO-']
 
+
                 if text == 'stop':
                     return False
                 else:
@@ -144,27 +205,9 @@ def main_app(name):
                         voice_text = SpeechToText.speechToText("start")
                         text += voice_text
 
-                        # print(text)
-
-                        start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
-                        answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
-
-                        # print(start_prompt)
-
-                        window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
-
-                        with open('conversation_with_michelle_3.txt', 'w') as f:
-                            f.write(start_prompt)
+                        conversationLogic(text, start_prompt, name, window)
                     elif event == 'Send':
-                        start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
-                        answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
-
-                        # print(start_prompt)
-
-                        window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
-
-                        with open('conversation_with_michelle_3.txt', 'w') as f:
-                            f.write(start_prompt)
+                        conversationLogic(text, start_prompt, name, window)
     except Exception as e:
         print(e)
         print("Conversation ended.")
