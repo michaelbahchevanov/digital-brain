@@ -1,16 +1,17 @@
-import cv2 as cv
+import cv2
 
 
 class Capture:
-    """A layer of abstraction on top of OpenCV's camera I/O"""
+    """A layer of abstraction on top of Opencv2's camera I/O"""
     def __init__(self, src=0, dimensions=(640, 480)):
-        self.cap = cv.VideoCapture(src)
+        self.cap = cv2.VideoCapture(src)
         self.set_dimensions(dimensions)
         self.isSuccess = False
         self.frame = None
 
     def start(self):
         self.isSuccess, self.frame = self.cap.read()
+        return self
 
     def set_dimensions(self, dimensions):
         width, height = dimensions
@@ -22,15 +23,19 @@ class Capture:
 
     def cleanup(self):
         self.cap.release()
-        cv.destroyAllWindows()
+        cv2.destroyAllWindows()
 
     def show(self, name="Capture"):
-        cv.imshow(name, self.frame)
+        cv2.imshow(name, self.frame)
 
     def wait_exit(self, key='q'):
-        if cv.waitKey(10) & 0xFF == ord(key):
+        if cv2.waitKey(10) & 0xFF == ord(key):
             return True
         return False
+    
+    def flip(self):
+        cv2.flip(self.frame, 1)
+        return self
 
 
 if __name__ == "__main__":

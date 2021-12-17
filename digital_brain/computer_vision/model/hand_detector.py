@@ -46,11 +46,11 @@ class HandDetector:
                 detected_hand["center"] =  (cx, cy)
 
                 if is_flipped:
-                    if handType.classification[0].label =="Right":
+                    if handType.classification[0].label == "Right":
                         detected_hand["type"] = "Left"
                     else:
                         detected_hand["type"] = "Right"
-                else:detected_hand["type"] = handType.classification[0].label
+                else: detected_hand["type"] = handType.classification[0].label
                 hands.append(detected_hand)
 
                 if draw:
@@ -61,20 +61,32 @@ class HandDetector:
                                   (255, 0, 255), 2)
                     cv2.putText(frame,detected_hand["type"],(bbox[0] - 30, bbox[1] - 30),cv2.FONT_HERSHEY_PLAIN,
                                 2,(255, 0, 255),2)
-        if draw:
-            return hands,frame
-        else:
-            return hands
+        return hands
         
-    def measure_distance(self, lm1, lm2, frame, draw=True):
+    def distance_from_landmarks(self, lm1, lm2):
         x1, y1 = lm1
         x2, y2 = lm2
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
         distance = m.hypot(x2 - x1, y2 - y1)
-        if draw:
-            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
-            cv2.putText(frame,str(int(distance)),(100, 150), cv2.FONT_HERSHEY_PLAIN,
-                                2,(255, 0, 255),2)
-            return distance, frame
-        else:
-            return distance
+        return distance
+
+    def direction_from_landmarks(self, lm1, lm2):
+        x1, y1 = lm1
+        x2, y2 = lm2
+        direction = 'left' if x1 > x2 else 'right'
+        return direction
+
+    def is_grabbed_from_landmarks(self, lm1, lm2):
+        distance = self.distance_from_landmarks(lm1, lm2)
+        if distance < 150:
+            return True
+        return False
+
+    def draw_direction_from_landmarks(self, frame, lm1, lm2):
+        x1, y1 = lm1
+        x2, y2 = lm2
+        distance = self.distance_from_landmarks(lm1, lm2)
+
+        cv2.arrowedLine(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
+        cv2.putText(frame,str(int(distance)),(100, 150), cv2.FONT_HERSHEY_PLAIN,
+                            2,(255, 0, 255),2)
+

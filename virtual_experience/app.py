@@ -16,12 +16,22 @@ while True:
     frame = capture.frame
 
     _, bbox_data = face_detector.find_faces(frame, draw_detections=False)
-    detections, f = hand_detector.find_hands(frame, draw=True)
+    detections = hand_detector.find_hands(frame, draw=False)
+
 
     if detections:
         det_lms = detections[0]["lms"]
         det_bbox = detections[0]["bbox"]
-        distance, img = hand_detector.measure_distance(det_lms[JOINTS_LANDMARKS.THUMB_TIP], det_lms[JOINTS_LANDMARKS.PINKY_TIP], frame)
+        thumb_tip, pinky_tip = det_lms[JOINTS_LANDMARKS.THUMB_TIP], det_lms[JOINTS_LANDMARKS.PINKY_TIP]
+
+        hand_direction = hand_detector.direction_from_landmarks(thumb_tip, pinky_tip)
+        is_grabbed = hand_detector.is_grabbed_from_landmarks(thumb_tip, pinky_tip)
+        hand_detector.draw_direction_from_landmarks(frame, thumb_tip, pinky_tip)
+
+        if hand_direction == 'left' and is_grabbed:
+            print('grabbed, facing out')
+        elif hand_direction == 'right' and is_grabbed:
+            print('show cool tooltip here')
 
     capture.show()
 
