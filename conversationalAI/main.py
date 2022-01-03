@@ -6,6 +6,7 @@ from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
 from models.speech_to_text import SpeechToText
 from models.brand_sentiment_analysis import *
+from models.dummy_data import DummyData
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import PySimpleGUI as sg
@@ -14,6 +15,8 @@ import PIL.Image
 import io
 import base64
 from datetime import datetime
+from pynput.keyboard import Key, Listener, Controller
+import geocoder
 
 
 # Method using ThreadPoolExecutor to run tasks concurrently
@@ -62,6 +65,7 @@ def start_cv():
 
     capture.cleanup()
 
+
 # Method to convert image to bytes. This method helps
 # with displaying images in python
 def convert_to_bytes(file_or_bytes, resize=None):
@@ -97,33 +101,40 @@ def convert_to_bytes(file_or_bytes, resize=None):
 
 # Method to send API request to openAI and save conversation history
 def conversationLogic(text, start_prompt, name, window):
-    start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
-    answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
+    try:
+        start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+        answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
 
-    # print(start_prompt)
+        window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+        window['-CONVO-'].update("")
 
-    window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+        # " + "-" + datetime.now().strftime("%d/%m/%Y %H:%M:%S")+"
+        with open("conversation_with_michelle_4.txt", 'w') as f:
+            f.write(start_prompt)
+    except Exception as e:
+        print(e)
 
 
-    with open("conversation_with_michelle_4" + "-" + datetime.now().strftime("%d/%m/%Y %H:%M:%S")+".txt", 'w') as f:
-        f.write(start_prompt)
+# Method to get location of city
+def getCity():
+    g = geocoder.ip('me')
 
-
-# method that start the conversational application
-def main_app(name):
-    topics = ['intent', 'sentiment', 'kruidvat']
-    print(topics)
-
-    products = [
-        {'ProductID': 1, 'Name': "L'ORÉAL PARIS MEN EXPERT HYDRA INTENSIVE 24H FACE CREAM", 'Size': '50ML', 'Price': 10.09, 'Skin Type': 'Dry'},
-        {'ProductID': 2, 'Name': 'NIVEA MEN PROTECT & CARE MOISTURIZING FACE CREAM', 'Size': '75ML', 'Price': 10.99, 'Skin Type': 'Dry'},
-        {'ProductID': 3, 'Name': "NIVEA MEN SENSITIVE MOISTURIZING FACE CREAM", 'Size': '75ML', 'Price': 11.99, 'Skin Type': 'Sensitive'},
-        {'ProductID': 4, 'Name': "L'ORÉAL PARIS MEN EXPERT HYDRA SENSITIVE MOISTURIZING FACIAL CARE", 'Size': '50ML', 'Price': 15.15, 'Skin Type': 'Sensitive'},
-        {'ProductID': 5, 'Name': "Andrélon Special Keratine Repair Shampoo", 'Size': '300ML', 'Price': 5.49, 'Hair Type': 'Dry and Fluffy'},
-        {'ProductID': 6, 'Name': "Schwarzkopf Repair & Care Shampoo", 'Size': '400ML', 'Price': 2.59, 'Hair Type': 'Dry and Fluffy'},
-        {'ProductID': 7, 'Name': "Kruidvat Sensation Tropical Shampoo", 'Size': '500ML', 'Price': 0.99, 'Hair Type': 'Normal'},
-        {'ProductID': 8, 'Name': "John Frieda Frizz Ease Dream Curls Shampoo", 'Size': '250ML', 'Price': 11.99, 'Hair Type': 'Normal'}
+    Eindhoven = [
+        {"City": "Eindhoven", "Location":["Winkelcentrum Woensel", "Strijpsestraat"]}
     ]
+
+    Tilburg = [
+        {"City": "Tilburg", "Location":["Pieter Vredeplein", "Besterdring", "Heuvelstraat"]}
+    ]
+
+    if g.city == "Eindhoven":
+        return Eindhoven
+    elif g.city == "Tilburg":
+        return Tilburg
+
+
+# Method contains the dialog for the conversation logic
+def main_app(name, gender, skin_type, hair_type):
 
     saleProducts = [
         {'ProductID': 1, 'Sale': '2nd half price'},
@@ -133,91 +144,74 @@ def main_app(name):
     ]
 
     userProfile = [
-        {'Gender': 'Male', 'Skin Type': 'Dry', 'Hair Type': 'Dry and Fluffy'}
+        {'Gender': gender, 'Skin Type': skin_type, 'Hair Type': hair_type}
     ]
 
-    availabilityStore = [
-        {"City": "Eindhoven", "Location":["Binnenstad", "Bergen", "Witte Dame"]}
-    ]
+    start_prompt = "The following is a conversation with Michelle Green, and she is an AI assistant and a AI salesperson for Kruidvat. " \
+                    "Michelle starts the conversation by greeting the user by their name. Michelle is creative, talkative, helpful, smart, and very friendly. " \
+                    "Michelle gives product recommendations strictly based on " + name + "'s user profile: " + str(userProfile) + ". Michelle is emotionally " \
+                    "intelligent and understands the user's intent. Michelle will give information about Kruidvat's " + str(DummyData.getProducts(gender, skin_type, hair_type)) + " that are " \
+                    "identified by their ProductID. Michelle will inform the user that these products:" + str(saleProducts) + " are currently on sale. " + \
+                    "Due to the COVID-19 measures set by the Government, Michelle will inform the user that it is not possible to shop in the store and " \
+                    "that Kruidvat is allowing for customers to Click & Collect. Michelle can let " + name + " know the opening hours are 8 AM to 6 PM" \
+                    " are for the stores located in " + str(getCity()) + ". The user can find the products in their shopping cart at these location as well"\
+                    ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
+                    + name + "'s shopping cart is empty but is updated during the conversation with Michelle"
 
-    # TextToSpeech.textToSpeechAudio("Choose a demo. Intent or Sentiment Classification, or use-case Kruidvat. After choosing, speak when you hear the ding!")
-    # filename = 'audio/clean_audio.wav'
-    # playsound(filename)
-
-    start_prompt = "The following is a conversation with Michelle Green, and she is a in-store AI virtual assistant for Kruidvat. " \
-                   "Michelle always starts the conversation by asking the user how they are doing. " \
-                   "Michelle is creative, helpful, smart, and very friendly. " \
-                   "Michelle can give product recommendations strictly based on " + name + "'s user profile: " + str(userProfile) + ". " \
-                   "Michelle recognizes the following sentiments: positive, neutral, and negative. " \
-                   "Michelle recognizes the following intents: AddToCart, ConverseWithAI, UpdateCart, RemoveFromCart, SearchCart, ShowProduct, ShowCart, RecommendProduct. " \
-                   "Michelle can only provide information and recommendations for this list of products identified by their ProductID " + str(products) + \
-                   ". This is the list of products identified by ProductID on sale " + str(saleProducts) + \
-                   ". In between the conversation Michelle tells " + name + " random facts about Kruidvat. " + \
-                   "Michelle can let " + name + " know where in the city " + str(availabilityStore) + " they can find the product in their shopping cart" + \
-                   ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
-                   + name + "'s shopping cart is empty but is updated during the conversation with Michelle. " \
-                   "Michelle will only add the items that " + name + " wants to cart, update the items he wants in the cart. " \
-                   "Michelle listens carefully to " + name + " needs and does exactly what he asked her to do"
-
-    sg.theme('DarkTeal')
+    sg.theme('DarkRed1')
     filename = "audio/michelle_image.png"
 
     layout = [
         [sg.Image(data=convert_to_bytes(filename, resize=(300, 300)), key='-IMAGE-')],
-        [sg.Text("Enter text here: "), sg.Input(key='-CONVO-'), sg.Button('Send')],
+        [sg.Text("Enter text here: "), sg.Input(key='-CONVO-'), sg.Text('press Enter to send')],
         [sg.Text("Use Voice Command"), sg.Button('Speak')],
         [sg.Button('Exit')],
-        [sg.Output(size=(150, 20), key='-OUTPUT-')],
+        [sg.Output(size=(80, 20), key='-OUTPUT-')],
     ]
 
-    window = sg.Window("In-Store AI Virtual Assistant for Kruidvat", layout, resizable=True)
+    window = sg.Window("AI Assistant for Kruidvat", layout, return_keyboard_events=True, resizable=True) #use_default_focus=False
 
     try:
-        inputText = input('Choose a topic: ')
-        if inputText == 'intent':
-            while True:
-                text = SpeechToText.speechToText("start")
-                if text == 'stop':
-                    return False
-                else:
-                    user_intent = GPTPlatform.intentClassifier(text) + " " + text
-                    GPTPlatform.conversationWithIntent(user_intent)
-        elif inputText == 'sentiment':
-            while True:
-                text = SpeechToText.speechToText("start")
-                if text == 'stop':
-                    return False
-                else:
-                    user_sentiment_on_brands = SentimentClassifier.get_sentiment(text) + ". " + text
-                    GPTPlatform.brandDetectionUsingSentiment(user_sentiment_on_brands)
-        elif inputText == 'kruidvat':
-            while True:
-                event, values = window.read()
-                text = values['-CONVO-']
+        while True:
+            event, values = window.read()
+            text = values['-CONVO-']
 
+            if event == "Exit" or event == sg.WIN_CLOSED:
+                break
+            elif event == "Speak":
+                voice_text = SpeechToText.speechToText("start")
+                text += voice_text
 
-                if text == 'stop':
-                    return False
-                else:
-                    if event == "Exit" or event == sg.WIN_CLOSED:
-                        break
-                    elif event == "Speak":
-                        voice_text = SpeechToText.speechToText("start")
-                        text += voice_text
+                start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+                answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
 
-                        conversationLogic(text, start_prompt, name, window)
-                    elif event == 'Send':
-                        conversationLogic(text, start_prompt, name, window)
+                window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+                window['-CONVO-'].update("")
+
+                with open("conversation_with_michelle_4.txt", 'w') as f:
+                    f.write(start_prompt)
+
+            elif event == 'Return:36':
+                start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
+                answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
+
+                window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
+                window['-CONVO-'].update("")
+
+                with open("conversation_with_michelle_4.txt", 'w') as f:
+                    f.write(start_prompt)
     except Exception as e:
         print(e)
         print("Conversation ended.")
 
 
 if __name__ == '__main__':
+    TextToSpeech.textToSpeechAudio("Hey there, before we start let's build your profile for the best experience.")
+    filename = 'audio/clean_audio.wav'
+    playsound(filename)
+    os.remove(filename)
     name = input("Enter your name: ")
-    main_app(name)
-
-    # run_conversational_tasks([
-    #     # start_cv(),
-    #     main_app(name),
-    # ])
+    gender = input("Enter your gender (man, woman): ")
+    skin_type = input("Enter your skin type (dry or sensitive): ")
+    hair_type = input("Enter your hair type (dry or normal): ")
+    main_app(name, gender, skin_type, hair_type)

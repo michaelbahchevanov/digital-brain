@@ -63,12 +63,11 @@ class TextToSpeech:
         vocoder_model.cuda()
     vocoder_model.eval()
 
-    # model.length_scale = 0.8  # set speed of the speech.
-    # model.noise_scale = 0.01  # set speech variation
+    model.length_scale = 0.8  # set speed of the speech.
+    model.noise_scale = 0.01  # set speech variation
 
     # Method to generate text to speech synthesis
     def tts(model, text, CONFIG, use_cuda, ap, use_gl, figures=True):
-        t_1 = time.time()
         waveform, alignment, mel_spec, mel_postnet_spec, stop_tokens, inputs = synthesis(model, text, CONFIG, use_cuda, ap, TextToSpeech.speaker_id, style_wav=None, truncated=False, enable_eos_bos_chars=CONFIG.enable_eos_bos_chars)
 
         if not use_gl:
