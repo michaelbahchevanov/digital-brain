@@ -5,7 +5,7 @@ from digital_brain.computer_vision.model.utils.capture import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from models.text_to_speech import TextToSpeech
 from models.speech_to_text import SpeechToText
-from models.brand_sentiment_analysis import *
+from models.sentiment_analysis import *
 from models.dummy_data import DummyData
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
@@ -17,6 +17,7 @@ import base64
 from datetime import datetime
 from pynput.keyboard import Key, Listener, Controller
 import geocoder
+import re
 
 
 # Method using ThreadPoolExecutor to run tasks concurrently
@@ -118,16 +119,16 @@ def conversationLogic(text, start_prompt, name, window):
 # Method to get location of city
 def getCity():
     g = geocoder.ip('me')
-
+    print(g.city)
     Eindhoven = [
-        {"City": "Eindhoven", "Location":["Winkelcentrum Woensel", "Strijpsestraat"]}
+        "Winkelcentrum Woensel", "Strijpsestraat"
     ]
 
     Tilburg = [
-        {"City": "Tilburg", "Location":["Pieter Vredeplein", "Besterdring", "Heuvelstraat"]}
+        "Pieter Vredeplein", "Besterdring", "Heuvelstraat"
     ]
 
-    if g.city == "Eindhoven":
+    if g.city == "Amsterdam":
         return Eindhoven
     elif g.city == "Tilburg":
         return Tilburg
@@ -154,7 +155,7 @@ def main_app(name, gender, skin_type, hair_type):
                     "identified by their ProductID. Michelle will inform the user that these products:" + str(saleProducts) + " are currently on sale. " + \
                     "Due to the COVID-19 measures set by the Government, Michelle will inform the user that it is not possible to shop in the store and " \
                     "that Kruidvat is allowing for customers to Click & Collect. Michelle can let " + name + " know the opening hours are 8 AM to 6 PM" \
-                    " are for the stores located in " + str(getCity()) + ". The user can find the products in their shopping cart at these location as well"\
+                    " are for the stores located in " + str(getCity()) + ". The user can find the products in their shopping cart at these locations as well"\
                     ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
                     + name + "'s shopping cart is empty but is updated during the conversation with Michelle"
 
@@ -192,6 +193,21 @@ def main_app(name, gender, skin_type, hair_type):
                     f.write(start_prompt)
 
             elif event == 'Return:36':
+                # # Change image based on user emotional state
+                # if SentimentClassifier.get_sentiment(text) == "neutral":
+                #     window['-IMAGE-'].update(data=convert_to_bytes("audio/Pngtree_cool_face.png", resize=(100, 100)))
+                # elif SentimentClassifier.get_sentiment(text) == "positive":
+                #     window['-IMAGE-'].update(data=convert_to_bytes("audio/Pngtree_happy_face.png", resize=(100, 100)))
+                # elif SentimentClassifier.get_sentiment(text) == "negative":
+                #     window['-IMAGE-'].update("audio/cry_face.gif")
+
+                # checkout = 'checkout'
+                # go_to_checkout = re.findall(checkout, text)
+                #
+                # if go_to_checkout:
+                #     # event2, values2 = window2.read()
+                #     print(go_to_checkout)
+
                 start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
                 answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
 
@@ -200,6 +216,7 @@ def main_app(name, gender, skin_type, hair_type):
 
                 with open("conversation_with_michelle_4.txt", 'w') as f:
                     f.write(start_prompt)
+
     except Exception as e:
         print(e)
         print("Conversation ended.")
@@ -215,3 +232,35 @@ if __name__ == '__main__':
     skin_type = input("Enter your skin type (dry or sensitive): ")
     hair_type = input("Enter your hair type (dry or normal): ")
     main_app(name, gender, skin_type, hair_type)
+
+
+def main():
+    window1, window2 = make_win1(), make_win2()
+
+    window2.move(window1.current_location()[0], window1.current_location()[1]+220)
+
+    while True:             # Event Loop
+        window, event, values = sg.read_all_windows()
+
+        if window == sg.WIN_CLOSED:     # if all windows were closed
+            break
+        if event == sg.WIN_CLOSED or event == 'Exit':
+            window.close()
+            if window == window2:       # if closing win 2, mark as closed
+                window2 = None
+            elif window == window1:     # if closing win 1, mark as closed
+                window1 = None
+        elif event == 'Reopen':
+            if not window2:
+                window2 = make_win2()
+                window2.move(window1.current_location()[0], window1.current_location()[1] + 220)
+        elif event == '-IN-':
+            output_window = window2 if window == window1 else window1
+            if output_window:           # if a valid window, then output to it
+                output_window['-OUTPUT-'].update(values['-IN-'])
+            else:
+                window['-OUTPUT-'].update('Other window is closed')
+
+
+if __name__ == '__main__':
+    main()

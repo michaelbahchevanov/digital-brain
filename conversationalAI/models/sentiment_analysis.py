@@ -50,6 +50,7 @@ class SentimentClassifier(nn.Module):
         output = model(input_ids, attention_mask)
         _, prediction = torch.max(output, dim=1)
 
+        print(SentimentClassifier.class_names[prediction])
         return SentimentClassifier.class_names[prediction]
 
     def __init__(self, n_classes):
