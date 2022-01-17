@@ -15,7 +15,6 @@ class HandDetector:
                                         min_detection_confidence=self.detectionCon, 
                                         min_tracking_confidence = self.minTrackCon)
         self.draw = mp.solutions.drawing_utils
-        self.joints_landmarks = [4, 8, 12, 16, 20]
 
     def find_hands(self, frame, draw=True, is_flipped=True):
         frameRGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -72,12 +71,12 @@ class HandDetector:
     def direction_from_landmarks(self, lm1, lm2):
         x1, y1 = lm1
         x2, y2 = lm2
-        direction = 'left' if x1 > x2 else 'right'
+        direction = 'out' if x1 > x2 else 'in'
         return direction
 
     def is_grabbed_from_landmarks(self, lm1, lm2):
         distance = self.distance_from_landmarks(lm1, lm2)
-        if distance < 150:
+        if distance < 250:
             return True
         return False
 
@@ -89,4 +88,16 @@ class HandDetector:
         cv2.arrowedLine(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
         cv2.putText(frame,str(int(distance)),(100, 150), cv2.FONT_HERSHEY_PLAIN,
                             2,(255, 0, 255),2)
+
+    def draw_state(self, frame, lm1, lm2):
+        is_grabbed = self.is_grabbed_from_landmarks(lm1, lm2)
+        hand_direction = self.direction_from_landmarks(lm1, lm2)
+        
+        if is_grabbed:
+            cv2.putText(frame, "grabbed", (100, 200), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+
+        if hand_direction == "left":
+            cv2.putText(frame, "facing out", (100, 250), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+        elif hand_direction == "right":
+            cv2.putText(frame, "facing in", (100, 250), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 

@@ -1,4 +1,4 @@
-from digital_brain.computer_vision.model.utils.capture import Capture
+from digital_brain.computer_vision.model.utils import Capture
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 
 capture = Capture()
