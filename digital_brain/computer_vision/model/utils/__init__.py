@@ -1,4 +1,5 @@
 """Utilities for the models"""
+from unicodedata import name
 import cv2
 import numpy as np
 
@@ -90,6 +91,13 @@ class Draggable():
         if ox < tracker[0] < ox + w and oy < tracker[1] < oy + h:
             self.origin = tracker[0] - w // 2, tracker[1] - h // 2
 
+    def draw_tooltip(self, frame, origin=(0, 0)):
+        ox, oy = origin[0] + 50, origin[1] + 50
+        ox_, oy_ = origin[0] - 175, origin[1] - 250
+
+        frame = self.overlay(ox + ox_, oy + oy_)
+        return frame
+
 class Capture:
     """A layer of abstraction on top of Opencv2's camera I/O"""
     def __init__(self, src=0, dimensions=(640, 480)):
@@ -128,14 +136,6 @@ class Capture:
     
     def set_frame(self, val):
         self.frame = val
-
-def draw_tooltip(frame, origin=(0, 0), item_name="", description=""):
-    w, h = frame.shape[:2]
-    cv2.rectangle(frame, (origin[0] + 50, origin[1] + 50),
-                                  (origin[0] - 175, origin[1] - 250),
-                                  (0, 255, 25), 2)
-    return frame
-
 
 
 if __name__ == "__main__":

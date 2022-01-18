@@ -5,7 +5,7 @@ import os
 from digital_brain.computer_vision.model.facial_detector import FaceDetector
 from digital_brain.computer_vision.model.hand_detector import HandDetector
 from digital_brain.computer_vision.common.constants import JOINTS_LANDMARKS
-from digital_brain.computer_vision.model.utils import Draggable, Capture, draw_tooltip
+from digital_brain.computer_vision.model.utils import Draggable, Capture
 
 
 capture = Capture(dimensions=(1280, 720))
@@ -45,7 +45,9 @@ while True:
             for img in img_list:
                 img.update_hand_tracking(thumb_tip)
                 if hand_direction == "in":
-                    frame = draw_tooltip(frame, (ox, oy))
+                    tooltip = Draggable(f"./Tooltip Prototype.png", [ox, oy], 'png')
+                else:
+                    tooltip = None
 
     try:
         for img in img_list:
@@ -54,6 +56,8 @@ while True:
 
             if img.img_type == 'png':
                 frame = img.overlay(frame, (ox, oy))
+                if tooltip:
+                    frame = tooltip.overlay(frame, (ox-400, oy-200))
                 capture.set_frame(frame)
             else:
                 # Not fully supported, keep to png
