@@ -1,7 +1,5 @@
 import speech_recognition as sr
 from playsound import playsound
-import re
-from pynput.keyboard import Key, Listener, Controller
 
 
 class SpeechToText:
@@ -19,6 +17,5 @@ class SpeechToText:
             r.adjust_for_ambient_noise(source, duration=1)  # reduce noise
             audio_text = r.listen(source, timeout=4)
             print("Time over, thanks")
-            text = r.recognize_google(audio_text)
-            return text
+            return r.recognize_google(audio_text)
 

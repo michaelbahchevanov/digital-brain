@@ -1,15 +1,17 @@
 import librosa
 import soundfile as sf
 import numpy as np
-import scipy.io
+import scipy.io.wavfile
 import scipy.signal
+import pyworld as pw
 
-from TTS.utils.data import StandardScaler
+from TTS.tts.utils.data import StandardScaler
 
-
+#pylint: disable=too-many-public-methods
 class AudioProcessor(object):
     def __init__(self,
                  sample_rate=None,
+                 resample=False,
                  num_mels=None,
                  min_level_db=None,
                  frame_shift_ms=None,
@@ -38,6 +40,7 @@ class AudioProcessor(object):
         print(" > Setting up Audio Processor...")
         # setup class attributed
         self.sample_rate = sample_rate
+        self.resample = resample
         self.num_mels = num_mels
         self.min_level_db = min_level_db or 0
         self.frame_shift_ms = frame_shift_ms
@@ -52,7 +55,7 @@ class AudioProcessor(object):
         self.mel_fmin = mel_fmin or 0
         self.mel_fmax = mel_fmax
         self.spec_gain = float(spec_gain)
-        self.stft_pad_mode = 'reflect'
+        self.stft_pad_mode = stft_pad_mode
         self.max_norm = 1.0 if max_norm is None else float(max_norm)
         self.clip_norm = clip_norm
         self.do_trim_silence = do_trim_silence
@@ -123,7 +126,7 @@ class AudioProcessor(object):
             if self.symmetric_norm:
                 S_norm = ((2 * self.max_norm) * S_norm) - self.max_norm
                 if self.clip_norm:
-                    S_norm = np.clip(S_norm, -self.max_norm, self.max_norm)
+                    S_norm = np.clip(S_norm, -self.max_norm, self.max_norm)  # pylint: disable=invalid-unary-operand-type
                 return S_norm
             else:
                 S_norm = self.max_norm * S_norm
@@ -148,7 +151,7 @@ class AudioProcessor(object):
                     raise RuntimeError(' [!] Mean-Var stats does not match the given feature dimensions.')
             if self.symmetric_norm:
                 if self.clip_norm:
-                    S_denorm = np.clip(S_denorm, -self.max_norm, self.max_norm)
+                    S_denorm = np.clip(S_denorm, -self.max_norm, self.max_norm)  #pylint: disable=invalid-unary-operand-type
                 S_denorm = ((S_denorm + self.max_norm) * -self.min_level_db / (2 * self.max_norm)) + self.min_level_db
                 return S_denorm + self.ref_level_db
             else:
@@ -173,8 +176,9 @@ class AudioProcessor(object):
         for key in stats_config.keys():
             if key in skip_parameters:
                 continue
-            assert stats_config[key] == self.__dict__[key],\
-                f" [!] Audio param {key} does not match the value used for computing mean-var stats. {stats_config[key]} vs {self.__dict__[key]}"
+            if key not in ['sample_rate', 'trim_db']:
+                assert stats_config[key] == self.__dict__[key],\
+                    f" [!] Audio param {key} does not match the value used for computing mean-var stats. {stats_config[key]} vs {self.__dict__[key]}"
         return mel_mean, mel_std, linear_mean, linear_std, stats_config
 
     # pylint: disable=attribute-defined-outside-init
@@ -285,6 +289,17 @@ class AudioProcessor(object):
             return 0, pad
         return pad // 2, pad // 2 + pad % 2
 
+    ### Compute F0 ###
+    def compute_f0(self, x):
+        f0, t = pw.dio(
+            x.astype(np.double),
+            fs=self.sample_rate,
+            f0_ceil=self.mel_fmax,
+            frame_period=1000 * self.hop_length / self.sample_rate,
+        )
+        f0 = pw.stonemask(x.astype(np.double), f0, t, self.sample_rate)
+        return f0
+
     ### Audio Processing ###
     def find_endpoint(self, wav, threshold_db=-40, min_silence_sec=0.8):
         window_length = int(self.sample_rate * min_silence_sec)
@@ -308,8 +323,11 @@ class AudioProcessor(object):
 
     ### save and load ###
     def load_wav(self, filename, sr=None):
-        if sr is None:
+        if self.resample:
+            x, sr = librosa.load(filename, sr=self.sample_rate)
+        elif sr is None:
             x, sr = sf.read(filename)
+            assert self.sample_rate == sr, "%s vs %s"%(self.sample_rate, sr)
         else:
             x, sr = librosa.load(filename, sr=sr)
         if self.do_trim_silence:
@@ -317,7 +335,6 @@ class AudioProcessor(object):
                 x = self.trim_silence(x)
             except ValueError:
                 print(f' [!] File cannot be trimmed for silence - {filename}')
-        assert self.sample_rate == sr, "%s vs %s"%(self.sample_rate, sr)
         if self.do_sound_norm:
             x = self.sound_norm(x)
         return x

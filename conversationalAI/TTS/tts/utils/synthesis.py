@@ -14,10 +14,13 @@ def text_to_seqvec(text, CONFIG):
         seq = np.asarray(
             phoneme_to_sequence(text, text_cleaner, CONFIG.phoneme_language,
                                 CONFIG.enable_eos_bos_chars,
-                                tp=CONFIG.characters if 'characters' in CONFIG.keys() else None),
+                                tp=CONFIG.characters if 'characters' in CONFIG.keys() else None,
+                                add_blank=CONFIG['add_blank'] if 'add_blank' in CONFIG.keys() else False),
             dtype=np.int32)
     else:
-        seq = np.asarray(text_to_sequence(text, text_cleaner, tp=CONFIG.characters if 'characters' in CONFIG.keys() else None), dtype=np.int32)
+        seq = np.asarray(
+            text_to_sequence(text, text_cleaner, tp=CONFIG.characters if 'characters' in CONFIG.keys() else None,
+            add_blank=CONFIG['add_blank'] if 'add_blank' in CONFIG.keys() else False), dtype=np.int32)
     return seq
 
 
@@ -37,23 +40,48 @@ def numpy_to_tf(np_array, dtype):
     return tensor
 
 
-def compute_style_mel(style_wav, ap):
-    style_mel = ap.melspectrogram(
-        ap.load_wav(style_wav)).expand_dims(0)
+def compute_style_mel(style_wav, ap, cuda=False):
+    style_mel = torch.FloatTensor(ap.melspectrogram(
+        ap.load_wav(style_wav, sr=ap.sample_rate))).unsqueeze(0)
+    if cuda:
+        return style_mel.cuda()
     return style_mel
 
 
-def run_model_torch(model, inputs, CONFIG, truncated, speaker_id=None, style_mel=None):
-    if CONFIG.use_gst:
-        decoder_output, postnet_output, alignments, stop_tokens = model.inference(
-            inputs, style_mel=style_mel, speaker_ids=speaker_id)
-    else:
-        if truncated:
-            decoder_output, postnet_output, alignments, stop_tokens = model.inference_truncated(
-                inputs, speaker_ids=speaker_id)
-        else:
+def run_model_torch(model, inputs, CONFIG, truncated, speaker_id=None, style_mel=None, speaker_embeddings=None):
+    if 'tacotron' in CONFIG.model.lower():
+        if CONFIG.use_gst:
             decoder_output, postnet_output, alignments, stop_tokens = model.inference(
-                inputs, speaker_ids=speaker_id)
+                inputs, style_mel=style_mel, speaker_ids=speaker_id, speaker_embeddings=speaker_embeddings)
+        else:
+            if truncated:
+                decoder_output, postnet_output, alignments, stop_tokens = model.inference_truncated(
+                    inputs, speaker_ids=speaker_id, speaker_embeddings=speaker_embeddings)
+            else:
+                decoder_output, postnet_output, alignments, stop_tokens = model.inference(
+                    inputs, speaker_ids=speaker_id, speaker_embeddings=speaker_embeddings)
+    elif 'glow' in CONFIG.model.lower():
+        inputs_lengths = torch.tensor(inputs.shape[1:2]).to(inputs.device)  # pylint: disable=not-callable
+        if hasattr(model, 'module'):
+            # distributed model
+            postnet_output, _, _, _, alignments, _, _ = model.module.inference(inputs, inputs_lengths, g=speaker_id if speaker_id is not None else speaker_embeddings)
+        else:
+            postnet_output, _, _, _, alignments, _, _ = model.inference(inputs, inputs_lengths, g=speaker_id if speaker_id is not None else speaker_embeddings)
+        postnet_output = postnet_output.permute(0, 2, 1)
+        # these only belong to tacotron models.
+        decoder_output = None
+        stop_tokens = None
+    elif 'speedy_speech' in CONFIG.model.lower():
+        inputs_lengths = torch.tensor(inputs.shape[1:2]).to(inputs.device)  # pylint: disable=not-callable
+        if hasattr(model, 'module'):
+            # distributed model
+            postnet_output, alignments= model.module.inference(inputs, inputs_lengths, g=speaker_id if speaker_id is not None else speaker_embeddings)
+        else:
+            postnet_output, alignments= model.inference(inputs, inputs_lengths, g=speaker_id if speaker_id is not None else speaker_embeddings)
+        postnet_output = postnet_output.permute(0, 2, 1)
+        # these only belong to tacotron models.
+        decoder_output = None
+        stop_tokens = None
     return decoder_output, postnet_output, alignments, stop_tokens
 
 
@@ -97,9 +125,9 @@ def run_model_tflite(model, inputs, CONFIG, truncated, speaker_id=None, style_me
 
 def parse_outputs_torch(postnet_output, decoder_output, alignments, stop_tokens):
     postnet_output = postnet_output[0].data.cpu().numpy()
-    decoder_output = decoder_output[0].data.cpu().numpy()
+    decoder_output = None if decoder_output is None else decoder_output[0].data.cpu().numpy()
     alignment = alignments[0].cpu().data.numpy()
-    stop_tokens = stop_tokens[0].cpu().numpy()
+    stop_tokens = None if stop_tokens is None else stop_tokens[0].cpu().numpy()
     return postnet_output, decoder_output, alignment, stop_tokens
 
 
@@ -129,11 +157,23 @@ def inv_spectrogram(postnet_output, ap, CONFIG):
     return wav
 
 
-def id_to_torch(speaker_id):
+def id_to_torch(speaker_id, cuda=False):
     if speaker_id is not None:
         speaker_id = np.asarray(speaker_id)
-        speaker_id = torch.from_numpy(speaker_id).unsqueeze(0)
+        # TODO: test this for tacotron models
+        speaker_id = torch.from_numpy(speaker_id)
+    if cuda:
+        return speaker_id.cuda()
     return speaker_id
+
+
+def embedding_to_torch(speaker_embedding, cuda=False):
+    if speaker_embedding is not None:
+        speaker_embedding = np.asarray(speaker_embedding)
+        speaker_embedding = torch.from_numpy(speaker_embedding).unsqueeze(0).type(torch.FloatTensor)
+    if cuda:
+        return speaker_embedding.cuda()
+    return speaker_embedding
 
 
 # TODO: perform GL with pytorch for batching
@@ -165,15 +205,16 @@ def synthesis(model,
               enable_eos_bos_chars=False, #pylint: disable=unused-argument
               use_griffin_lim=False,
               do_trim_silence=False,
+              speaker_embedding=None,
               backend='torch'):
     """Synthesize voice for the given text.
 
         Args:
-            model (TTS.models): model to synthesize.
+            model (TTS.tts.models): model to synthesize.
             text (str): target text
             CONFIG (dict): config dictionary to be loaded from config.json.
             use_cuda (bool): enable cuda.
-            ap (TTS.utils.audio.AudioProcessor): audio processor to process
+            ap (TTS.tts.utils.audio.AudioProcessor): audio processor to process
                 model outputs.
             speaker_id (int): id of speaker
             style_wav (str): Uses for style embedding of GST.
@@ -185,14 +226,23 @@ def synthesis(model,
     """
     # GST processing
     style_mel = None
-    if CONFIG.model == "TacotronGST" and style_wav is not None:
-        style_mel = compute_style_mel(style_wav, ap)
+    if 'use_gst' in CONFIG.keys() and CONFIG.use_gst and style_wav is not None:
+        if isinstance(style_wav, dict):
+            style_mel = style_wav
+        else:
+            style_mel = compute_style_mel(style_wav, ap, cuda=use_cuda)
     # preprocess the given text
     inputs = text_to_seqvec(text, CONFIG)
     # pass tensors to backend
     if backend == 'torch':
-        speaker_id = id_to_torch(speaker_id)
-        style_mel = numpy_to_torch(style_mel, torch.float, cuda=use_cuda)
+        if speaker_id is not None:
+            speaker_id = id_to_torch(speaker_id, cuda=use_cuda)
+
+        if speaker_embedding is not None:
+            speaker_embedding = embedding_to_torch(speaker_embedding, cuda=use_cuda)
+
+        if not isinstance(style_mel, dict):
+            style_mel = numpy_to_torch(style_mel, torch.float, cuda=use_cuda)
         inputs = numpy_to_torch(inputs, torch.long, cuda=use_cuda)
         inputs = inputs.unsqueeze(0)
     elif backend == 'tf':
@@ -207,7 +257,7 @@ def synthesis(model,
     # synthesize voice
     if backend == 'torch':
         decoder_output, postnet_output, alignments, stop_tokens = run_model_torch(
-            model, inputs, CONFIG, truncated, speaker_id, style_mel)
+            model, inputs, CONFIG, truncated, speaker_id, style_mel, speaker_embeddings=speaker_embedding)
         postnet_output, decoder_output, alignment, stop_tokens = parse_outputs_torch(
             postnet_output, decoder_output, alignments, stop_tokens)
     elif backend == 'tf':

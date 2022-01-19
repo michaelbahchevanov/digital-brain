@@ -1,93 +1,19 @@
 import torch
 from torch import nn
-from torch.autograd import Variable
 from torch.nn import functional as F
 
-
-class Linear(nn.Module):
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 bias=True,
-                 init_gain='linear'):
-        super(Linear, self).__init__()
-        self.linear_layer = torch.nn.Linear(
-            in_features, out_features, bias=bias)
-        self._init_w(init_gain)
-
-    def _init_w(self, init_gain):
-        torch.nn.init.xavier_uniform_(
-            self.linear_layer.weight,
-            gain=torch.nn.init.calculate_gain(init_gain))
-
-    def forward(self, x):
-        return self.linear_layer(x)
-
-
-class LinearBN(nn.Module):
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 bias=True,
-                 init_gain='linear'):
-        super(LinearBN, self).__init__()
-        self.linear_layer = torch.nn.Linear(
-            in_features, out_features, bias=bias)
-        self.batch_normalization = nn.BatchNorm1d(out_features, momentum=0.1, eps=1e-5)
-        self._init_w(init_gain)
-
-    def _init_w(self, init_gain):
-        torch.nn.init.xavier_uniform_(
-            self.linear_layer.weight,
-            gain=torch.nn.init.calculate_gain(init_gain))
-
-    def forward(self, x):
-        out = self.linear_layer(x)
-        if len(out.shape) == 3:
-            out = out.permute(1, 2, 0)
-        out = self.batch_normalization(out)
-        if len(out.shape) == 3:
-            out = out.permute(2, 0, 1)
-        return out
-
-
-class Prenet(nn.Module):
-    def __init__(self,
-                 in_features,
-                 prenet_type="original",
-                 prenet_dropout=True,
-                 out_features=[256, 256],
-                 bias=True):
-        super(Prenet, self).__init__()
-        self.prenet_type = prenet_type
-        self.prenet_dropout = prenet_dropout
-        in_features = [in_features] + out_features[:-1]
-        if prenet_type == "bn":
-            self.linear_layers = nn.ModuleList([
-                LinearBN(in_size, out_size, bias=bias)
-                for (in_size, out_size) in zip(in_features, out_features)
-            ])
-        elif prenet_type == "original":
-            self.linear_layers = nn.ModuleList([
-                Linear(in_size, out_size, bias=bias)
-                for (in_size, out_size) in zip(in_features, out_features)
-            ])
-
-    def forward(self, x):
-        for linear in self.linear_layers:
-            if self.prenet_dropout:
-                x = F.dropout(F.relu(linear(x)), p=0.5, training=self.training)
-            else:
-                x = F.relu(linear(x))
-        return x
-
-
-####################
-# ATTENTION MODULES
-####################
+from TTS.tts.layers.common_layers import Linear
+from scipy.stats import betabinom
 
 
 class LocationLayer(nn.Module):
+    """Layers for Location Sensitive Attention
+
+    Args:
+        attention_dim (int): number of channels in the input tensor.
+        attention_n_filters (int, optional): number of filters in convolution. Defaults to 32.
+        attention_kernel_size (int, optional): kernel size of convolution filter. Defaults to 31.
+    """
     def __init__(self,
                  attention_dim,
                  attention_n_filters=32,
@@ -104,6 +30,10 @@ class LocationLayer(nn.Module):
             attention_n_filters, attention_dim, bias=False, init_gain='tanh')
 
     def forward(self, attention_cat):
+        """
+        Shapes:
+            attention_cat: [B, 2, C]
+        """
         processed_attention = self.location_conv1d(attention_cat)
         processed_attention = self.location_dense(
             processed_attention.transpose(1, 2))
@@ -111,13 +41,18 @@ class LocationLayer(nn.Module):
 
 
 class GravesAttention(nn.Module):
-    """ Discretized Graves attention:
-        - https://arxiv.org/abs/1910.10288
-        - https://arxiv.org/pdf/1906.01083.pdf
+    """Graves Attention as is ref1 with updates from ref2.
+    ref1: https://arxiv.org/abs/1910.10288
+    ref2: https://arxiv.org/pdf/1906.01083.pdf
+
+    Args:
+        query_dim (int): number of channels in query tensor.
+        K (int): number of Gaussian heads to be used for computing attention.
     """
     COEF = 0.3989422917366028  # numpy.sqrt(1/(2*numpy.pi))
 
     def __init__(self, query_dim, K):
+
         super(GravesAttention, self).__init__()
         self._mask_value = 1e-8
         self.K = K
@@ -149,11 +84,11 @@ class GravesAttention(nn.Module):
 
     def forward(self, query, inputs, processed_inputs, mask):
         """
-        shapes:
-            query: B x D_attention_rnn
-            inputs: B x T_in x D_encoder
+        Shapes:
+            query: [B, C_attention_rnn]
+            inputs: [B, T_in, C_encoder]
             processed_inputs: place_holder
-            mask: B x T_in
+            mask: [B, T_in]
         """
         gbk_t = self.N_a(query)
         gbk_t = gbk_t.view(gbk_t.size(0), -1, self.K)
@@ -194,11 +129,40 @@ class GravesAttention(nn.Module):
 
 
 class OriginalAttention(nn.Module):
-    """Following the methods proposed here:
-        - https://arxiv.org/abs/1712.05884
-        - https://arxiv.org/abs/1807.06736 + state masking at inference
-        - Using sigmoid instead of softmax normalization
-        - Attention windowing at inference time
+    """Bahdanau Attention with various optional modifications. Proposed below.
+    - Location sensitive attnetion: https://arxiv.org/abs/1712.05884
+    - Forward Attention: https://arxiv.org/abs/1807.06736 + state masking at inference
+    - Using sigmoid instead of softmax normalization
+    - Attention windowing at inference time
+
+    Note:
+        Location Sensitive Attention is an attention mechanism that extends the additive attention mechanism
+    to use cumulative attention weights from previous decoder time steps as an additional feature.
+
+        Forward attention considers only the alignment paths that satisfy the monotonic condition at each
+    decoder timestep. The modified attention probabilities at each timestep are computed recursively
+    using a forward algorithm.
+
+        Transition agent for forward attention is further proposed, which helps the attention mechanism
+    to make decisions whether to move forward or stay at each decoder timestep.
+
+        Attention windowing applies a sliding windows to time steps of the input tensor centering at the last
+    time step with the largest attention weight. It is especially useful at inference to keep the attention
+    alignment diagonal.
+
+
+    Args:
+        query_dim (int): number of channels in the query tensor.
+        embedding_dim (int): number of channels in the vakue tensor. In general, the value tensor is the output of the encoder layer.
+        attention_dim (int): number of channels of the inner attention layers.
+        location_attention (bool): enable/disable location sensitive attention.
+        attention_location_n_filters (int): number of location attention filters.
+        attention_location_kernel_size (int): filter size of location attention convolution layer.
+        windowing (int): window size for attention windowing. if it is 5, for computing the attention, it only considers the time steps [(t-5), ..., (t+5)] of the input.
+        norm (str): normalization method applied to the attention weights. 'softmax' or 'sigmoid'
+        forward_attn (bool): enable/disable forward attention.
+        trans_agent (bool): enable/disable transition agent in the forward attention.
+        forward_attn_mask (int): enable/disable an explicit masking in forward attention. It is useful to set at especially inference time.
     """
     # Pylint gets confused by PyTorch conventions here
     #pylint: disable=attribute-defined-outside-init
@@ -244,14 +208,14 @@ class OriginalAttention(nn.Module):
         self.u = (0.5 * torch.ones([B, 1])).to(inputs.device)
 
     def init_location_attention(self, inputs):
-        B = inputs.shape[0]
-        T = inputs.shape[1]
-        self.attention_weights_cum = Variable(inputs.data.new(B, T).zero_())
+        B = inputs.size(0)
+        T = inputs.size(1)
+        self.attention_weights_cum = torch.zeros([B, T], device=inputs.device)
 
     def init_states(self, inputs):
-        B = inputs.shape[0]
-        T = inputs.shape[1]
-        self.attention_weights = Variable(inputs.data.new(B, T).zero_())
+        B = inputs.size(0)
+        T = inputs.size(1)
+        self.attention_weights = torch.zeros([B, T], device=inputs.device)
         if self.location_attention:
             self.init_location_attention(inputs)
         if self.forward_attn:
@@ -300,8 +264,8 @@ class OriginalAttention(nn.Module):
 
     def apply_forward_attention(self, alignment):
         # forward attention
-        fwd_shifted_alpha = F.pad(self.alpha[:, :-1].clone().to(alignment.device),
-                            (1, 0, 0, 0))
+        fwd_shifted_alpha = F.pad(
+            self.alpha[:, :-1].clone().to(alignment.device), (1, 0, 0, 0))
         # compute transition potentials
         alpha = ((1 - self.u) * self.alpha
                  + self.u * fwd_shifted_alpha
@@ -309,7 +273,7 @@ class OriginalAttention(nn.Module):
         # force incremental alignment
         if not self.training and self.forward_attn_mask:
             _, n = fwd_shifted_alpha.max(1)
-            val, n2 = alpha.max(1)
+            val, _ = alpha.max(1)
             for b in range(alignment.shape[0]):
                 alpha[b, n[b] + 3:] = 0
                 alpha[b, :(
@@ -325,10 +289,10 @@ class OriginalAttention(nn.Module):
     def forward(self, query, inputs, processed_inputs, mask):
         """
         shapes:
-            query: B x D_attn_rnn
-            inputs: B x T_en x D_en
-            processed_inputs:: B x T_en x D_attn
-            mask: B x T_en
+            query: [B, C_attn_rnn]
+            inputs: [B, T_en, D_en]
+            processed_inputs: [B, T_en, D_attn]
+            mask: [B, T_en]
         """
         if self.location_attention:
             attention, _ = self.get_location_attention(
@@ -372,6 +336,123 @@ class OriginalAttention(nn.Module):
         return context
 
 
+class MonotonicDynamicConvolutionAttention(nn.Module):
+    """Dynamic convolution attention from
+    https://arxiv.org/pdf/1910.10288.pdf
+
+
+    query -> linear -> tanh -> linear ->|
+                                        |                                            mask values
+                                        v                                              |    |
+               atten_w(t-1) -|-> conv1d_dynamic -> linear -|-> tanh -> + -> softmax -> * -> * -> context
+                             |-> conv1d_static  -> linear -|           |
+                             |-> conv1d_prior   -> log ----------------|
+
+    query: attention rnn output.
+
+    Note:
+        Dynamic convolution attention is an alternation of the location senstive attention with
+    dynamically computed convolution filters from the previous attention scores and a set of
+    constraints to keep the attention alignment diagonal.
+
+    Args:
+        query_dim (int): number of channels in the query tensor.
+        embedding_dim (int): number of channels in the value tensor.
+        static_filter_dim (int): number of channels in the convolution layer computing the static filters.
+        static_kernel_size (int): kernel size for the convolution layer computing the static filters.
+        dynamic_filter_dim (int): number of channels in the convolution layer computing the dynamic filters.
+        dynamic_kernel_size (int): kernel size for the convolution layer computing the dynamic filters.
+        prior_filter_len (int, optional): [description]. Defaults to 11 from the paper.
+        alpha (float, optional): [description]. Defaults to 0.1 from the paper.
+        beta (float, optional): [description]. Defaults to 0.9 from the paper.
+    """
+    def __init__(
+        self,
+        query_dim,
+        embedding_dim,  # pylint: disable=unused-argument
+        attention_dim,
+        static_filter_dim,
+        static_kernel_size,
+        dynamic_filter_dim,
+        dynamic_kernel_size,
+        prior_filter_len=11,
+        alpha=0.1,
+        beta=0.9,
+    ):
+        super().__init__()
+        self._mask_value = 1e-8
+        self.dynamic_filter_dim = dynamic_filter_dim
+        self.dynamic_kernel_size = dynamic_kernel_size
+        self.prior_filter_len = prior_filter_len
+        self.attention_weights = None
+        # setup key and query layers
+        self.query_layer = nn.Linear(query_dim, attention_dim)
+        self.key_layer = nn.Linear(
+            attention_dim, dynamic_filter_dim * dynamic_kernel_size, bias=False
+        )
+        self.static_filter_conv = nn.Conv1d(
+            1,
+            static_filter_dim,
+            static_kernel_size,
+            padding=(static_kernel_size - 1) // 2,
+            bias=False,
+        )
+        self.static_filter_layer = nn.Linear(static_filter_dim, attention_dim, bias=False)
+        self.dynamic_filter_layer = nn.Linear(dynamic_filter_dim, attention_dim)
+        self.v = nn.Linear(attention_dim, 1, bias=False)
+
+        prior = betabinom.pmf(range(prior_filter_len), prior_filter_len - 1,
+                          alpha, beta)
+        self.register_buffer("prior", torch.FloatTensor(prior).flip(0))
+
+    # pylint: disable=unused-argument
+    def forward(self, query, inputs, processed_inputs, mask):
+        """
+        query: [B, C_attn_rnn]
+        inputs: [B, T_en, D_en]
+        processed_inputs: place holder.
+        mask: [B, T_en]
+        """
+        # compute prior filters
+        prior_filter = F.conv1d(
+            F.pad(self.attention_weights.unsqueeze(1),
+                  (self.prior_filter_len - 1, 0)), self.prior.view(1, 1, -1))
+        prior_filter = torch.log(prior_filter.clamp_min_(1e-6)).squeeze(1)
+        G = self.key_layer(torch.tanh(self.query_layer(query)))
+        # compute dynamic filters
+        dynamic_filter = F.conv1d(
+            self.attention_weights.unsqueeze(0),
+            G.view(-1, 1, self.dynamic_kernel_size),
+            padding=(self.dynamic_kernel_size - 1) // 2,
+            groups=query.size(0),
+        )
+        dynamic_filter = dynamic_filter.view(query.size(0), self.dynamic_filter_dim, -1).transpose(1, 2)
+        # compute static filters
+        static_filter = self.static_filter_conv(self.attention_weights.unsqueeze(1)).transpose(1, 2)
+        alignment = self.v(
+            torch.tanh(
+                self.static_filter_layer(static_filter) +
+                self.dynamic_filter_layer(dynamic_filter))).squeeze(-1) + prior_filter
+        # compute attention weights
+        attention_weights = F.softmax(alignment, dim=-1)
+        # apply masking
+        if mask is not None:
+            attention_weights.data.masked_fill_(~mask, self._mask_value)
+        self.attention_weights = attention_weights
+        # compute context
+        context = torch.bmm(attention_weights.unsqueeze(1), inputs).squeeze(1)
+        return context
+
+    def preprocess_inputs(self, inputs):  # pylint: disable=no-self-use
+        return None
+
+    def init_states(self, inputs):
+        B = inputs.size(0)
+        T = inputs.size(1)
+        self.attention_weights = torch.zeros([B, T], device=inputs.device)
+        self.attention_weights[:, 0] = 1.
+
+
 def init_attn(attn_type, query_dim, embedding_dim, attention_dim,
               location_attention, attention_location_n_filters,
               attention_location_kernel_size, windowing, norm, forward_attn,
@@ -385,5 +466,17 @@ def init_attn(attn_type, query_dim, embedding_dim, attention_dim,
                                  forward_attn_mask)
     if attn_type == "graves":
         return GravesAttention(query_dim, attn_K)
+    if attn_type == "dynamic_convolution":
+        return MonotonicDynamicConvolutionAttention(query_dim,
+                                                    embedding_dim,
+                                                    attention_dim,
+                                                    static_filter_dim=8,
+                                                    static_kernel_size=21,
+                                                    dynamic_filter_dim=8,
+                                                    dynamic_kernel_size=21,
+                                                    prior_filter_len=11,
+                                                    alpha=0.1,
+                                                    beta=0.9)
+
     raise RuntimeError(
         " [!] Given Attention Type '{attn_type}' is not exist.")

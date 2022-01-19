@@ -1,84 +1,110 @@
 import sys
 import torch
-import time
 import soundfile as sf
-import os
 
 sys.path.append('TTS')
-from TTS.utils.generic_utils import setup_model
+from TTS.tts.utils.generic_utils import setup_model
 from TTS.utils.io import load_config
-from TTS.utils.text.symbols import symbols, phonemes
+from TTS.tts.utils.text.symbols import symbols, phonemes, make_symbols
 from TTS.utils.audio import AudioProcessor
-from TTS.utils.synthesis import synthesis
+from TTS.tts.utils.synthesis import synthesis
 from TTS.vocoder.utils.generic_utils import setup_generator
-
+from TTS.tts.utils.io import load_checkpoint
 import warnings
-warnings.filterwarnings('ignore')
+
 
 class TextToSpeech:
+    warnings.filterwarnings('ignore')
+
+    # Colab: https://colab.research.google.com/drive/1uV2CD1hWx5FGUrcIQjdZfI717AMj8-kP?usp=sharing
+    # Source: https://github.com/mozilla/TTS
+
     use_cuda = False
 
     # model paths
-    TTS_MODEL = os.getcwd() + "/helpers/tts_model.pth.tar"
+    TTS_MODEL = "helpers/tts_model.pth.tar"
     TTS_CONFIG = "helpers/config.json"
     VOCODER_MODEL = "helpers/vocoder_model.pth.tar"
     VOCODER_CONFIG = "helpers/config_vocoder.json"
 
-    # load configuration files
+    # load configs
     TTS_CONFIG = load_config(TTS_CONFIG)
     VOCODER_CONFIG = load_config(VOCODER_CONFIG)
+    TTS_CONFIG.audio['stats_path'] = "helpers/scale_stats.npy"
+    VOCODER_CONFIG.audio['stats_path'] = "helpers/scale_stats_vocoder.npy"
 
     # load the audio processor
     ap = AudioProcessor(**TTS_CONFIG.audio)
 
     # multi speaker
-    speaker_id = None
     speakers = []
+    speaker_id = None
+
+    if 'characters' in TTS_CONFIG.keys():
+        symbols, phonemes = make_symbols(**TTS_CONFIG.characters)
 
     # load the model
     num_chars = len(phonemes) if TTS_CONFIG.use_phonemes else len(symbols)
     model = setup_model(num_chars, len(speakers), TTS_CONFIG)
 
     # load model state
-    cp = torch.load(TTS_MODEL, map_location=torch.device('cpu'))
-
-    # load the model
-    model.load_state_dict(cp['model'])
-    if use_cuda:
-        model.cuda()
+    model, _ =  load_checkpoint(model, TTS_MODEL, use_cuda=use_cuda)
     model.eval()
 
-    # set model stepsize
-    if 'r' in cp:
-        model.decoder.set_r(cp['r'])
-
-    # Load vocoder model
+    # LOAD VOCODER MODEL
     vocoder_model = setup_generator(VOCODER_CONFIG)
     vocoder_model.load_state_dict(torch.load(VOCODER_MODEL, map_location="cpu")["model"])
     vocoder_model.remove_weight_norm()
     vocoder_model.inference_padding = 0
+
+    # scale factor for sampling rate difference
+    scale_factor = [1,  VOCODER_CONFIG['audio']['sample_rate'] / ap.sample_rate]
 
     ap_vocoder = AudioProcessor(**VOCODER_CONFIG['audio'])
     if use_cuda:
         vocoder_model.cuda()
     vocoder_model.eval()
 
-    model.length_scale = 0.8  # set speed of the speech.
-    model.noise_scale = 0.01  # set speech variation
+    def interpolate_vocoder_input(scale_factor, spec):
+        """Interpolation to tolarate the sampling rate difference
+        btw tts model and vocoder"""
+        spec = torch.tensor(spec).unsqueeze(0).unsqueeze(0)
+        spec = torch.nn.functional.interpolate(spec, scale_factor=scale_factor, mode='bilinear').squeeze(0)
+        return spec
 
-    # Method to generate text to speech synthesis
+
     def tts(model, text, CONFIG, use_cuda, ap, use_gl, figures=True):
-        waveform, alignment, mel_spec, mel_postnet_spec, stop_tokens, inputs = synthesis(model, text, CONFIG, use_cuda, ap, TextToSpeech.speaker_id, style_wav=None, truncated=False, enable_eos_bos_chars=CONFIG.enable_eos_bos_chars)
-
+        # run tts
+        waveform, alignment, mel_spec, mel_postnet_spec, stop_tokens, inputs =\
+        synthesis(model,
+                   text,
+                   CONFIG,
+                   use_cuda,
+                   ap,
+                   TextToSpeech.speaker_id,
+                   None,
+                   False,
+                   CONFIG.enable_eos_bos_chars,
+                   use_gl)
+        # run vocoder
+        mel_postnet_spec = ap._denormalize(mel_postnet_spec.T).T
         if not use_gl:
-            waveform = TextToSpeech.vocoder_model.inference(torch.FloatTensor(mel_postnet_spec.T).unsqueeze(0))
-            waveform = waveform.flatten()
-        if use_cuda:
+            vocoder_input = TextToSpeech.ap_vocoder._normalize(mel_postnet_spec.T)
+            if TextToSpeech.scale_factor[1] != 1:
+                vocoder_input = TextToSpeech.interpolate_vocoder_input(TextToSpeech.scale_factor, vocoder_input)
+            else:
+                vocoder_input = torch.tensor(vocoder_input).unsqueeze(0)
+            waveform = TextToSpeech.vocoder_model.inference(vocoder_input)
+        # format output
+        if use_cuda and not use_gl:
             waveform = waveform.cpu()
-        waveform = waveform.numpy()
+        if not use_gl:
+            waveform = waveform.numpy()
+        waveform = waveform.squeeze()
+
         return alignment, mel_postnet_spec, stop_tokens, waveform
 
-    # Method to convert audio array to wav file and save the file for later usage
+    # Method to convert audio array to wav file and save the file for later use
     def textToSpeechAudio(input_text):
         align, spec, stop_tokens, wav = TextToSpeech.tts(TextToSpeech.model, input_text, TextToSpeech.TTS_CONFIG, TextToSpeech.use_cuda, TextToSpeech.ap, use_gl=False, figures=True)
         sf.write('audio/clean_audio.wav', wav, 22050, "PCM_16")

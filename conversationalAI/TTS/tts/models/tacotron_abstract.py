@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 
-from TTS.utils.generic_utils import sequence_mask
+from TTS.tts.utils.generic_utils import sequence_mask
 
 
 class TacotronAbstract(ABC, nn.Module):
@@ -28,7 +28,14 @@ class TacotronAbstract(ABC, nn.Module):
                  bidirectional_decoder=False,
                  double_decoder_consistency=False,
                  ddc_r=None,
-                 gst=False):
+                 encoder_in_features=512,
+                 decoder_in_features=512,
+                 speaker_embedding_dim=None,
+                 gst=False,
+                 gst_embedding_dim=512,
+                 gst_num_heads=4,
+                 gst_style_tokens=10,
+                 gst_use_speaker_embedding=False):
         """ Abstract Tacotron class """
         super().__init__()
         self.num_chars = num_chars
@@ -36,6 +43,10 @@ class TacotronAbstract(ABC, nn.Module):
         self.decoder_output_dim = decoder_output_dim
         self.postnet_output_dim = postnet_output_dim
         self.gst = gst
+        self.gst_embedding_dim = gst_embedding_dim
+        self.gst_num_heads = gst_num_heads
+        self.gst_style_tokens = gst_style_tokens
+        self.gst_use_speaker_embedding = gst_use_speaker_embedding
         self.num_speakers = num_speakers
         self.bidirectional_decoder = bidirectional_decoder
         self.double_decoder_consistency = double_decoder_consistency
@@ -51,6 +62,9 @@ class TacotronAbstract(ABC, nn.Module):
         self.location_attn = location_attn
         self.attn_K = attn_K
         self.separate_stopnet = separate_stopnet
+        self.encoder_in_features = encoder_in_features
+        self.decoder_in_features = decoder_in_features
+        self.speaker_embedding_dim = speaker_embedding_dim
 
         # layers
         self.embedding = None
@@ -58,8 +72,17 @@ class TacotronAbstract(ABC, nn.Module):
         self.decoder = None
         self.postnet = None
 
+        # multispeaker
+        if self.speaker_embedding_dim is None:
+            # if speaker_embedding_dim is None we need use the nn.Embedding, with default speaker_embedding_dim
+            self.embeddings_per_sample = False
+        else:
+            # if speaker_embedding_dim is not None we need use speaker embedding per sample
+            self.embeddings_per_sample = True
+
         # global style token
         if self.gst:
+            self.decoder_in_features += gst_embedding_dim # add gst embedding dim
             self.gst_layer = None
 
         # model states
@@ -158,11 +181,25 @@ class TacotronAbstract(ABC, nn.Module):
             self.speaker_embeddings_projected = self.speaker_project_mel(
                 self.speaker_embeddings).squeeze(1)
 
-    def compute_gst(self, inputs, mel_specs):
+    def compute_gst(self, inputs, style_input, speaker_embedding=None):
         """ Compute global style token """
-        # pylint: disable=not-callable
-        gst_outputs = self.gst_layer(mel_specs)
-        inputs = self._add_speaker_embedding(inputs, gst_outputs)
+        device = inputs.device
+        if isinstance(style_input, dict):
+            query = torch.zeros(1, 1, self.gst_embedding_dim//2).to(device)
+            if speaker_embedding is not None:
+                query = torch.cat([query, speaker_embedding.reshape(1, 1, -1)], dim=-1)
+
+            _GST = torch.tanh(self.gst_layer.style_token_layer.style_tokens)
+            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+            for k_token, v_amplifier in style_input.items():
+                key = _GST[int(k_token)].unsqueeze(0).expand(1, -1, -1)
+                gst_outputs_att = self.gst_layer.style_token_layer.attention(query, key)
+                gst_outputs = gst_outputs + gst_outputs_att * v_amplifier
+        elif style_input is None:
+            gst_outputs = torch.zeros(1, 1, self.gst_embedding_dim).to(device)
+        else:
+            gst_outputs = self.gst_layer(style_input, speaker_embedding) # pylint: disable=not-callable
+        inputs = self._concat_speaker_embedding(inputs, gst_outputs)
         return inputs
 
     @staticmethod

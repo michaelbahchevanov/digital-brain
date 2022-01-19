@@ -1,11 +1,15 @@
-class DummyData:
+import geocoder
 
-    # Method to get products
+class DummyData:
+    # Variables
+    products = []
+    
+    # Products data
     def getProducts(gender, skinType, hairType):
 
         menDrySkinProducts = [
             {'ProductID': 1, 'Name': "L'ORÉAL PARIS MEN EXPERT HYDRA INTENSIVE 24H FACE CREAM", 'Skin Type': 'Dry',
-             'Gender': 'Man', 'Size': '50ML', 'Price': 10.09},
+             'Gender': 'Man', 'Size': '50ML', 'Price': 10.49},
             {'ProductID': 2, 'Name': 'NIVEA MEN SENSITIVE COOLING AFTERSHAVE BALSEM', 'Skin Type': 'Dry',
              'Gender': 'Man', 'Size': '100ML', 'Price': 9.99},
         ]
@@ -26,7 +30,7 @@ class DummyData:
 
         womenSensitiveSkinProducts = [
             {'ProductID': 3, 'Name': "NIVEA ESSENTIALS RESTORATIVE NIGHT CREAM",
-             'Skin Type': 'Sensitive', 'Gender': 'Woman', 'Size': '50ML', 'Price': 11.49},
+             'Skin Type': 'Sensitive', 'Gender': 'Woman', 'Size': '50ML', 'Price': 13.49},
             {'ProductID': 4, 'Name': "GARNIER SKIN ACTIVE BOTANICAL DAY CREAM WITH ROSE WATER",
              'Skin Type': 'Sensitive', 'Gender': 'Woman', 'Size': '50ML', 'Price': 7.05}
         ]
@@ -59,25 +63,74 @@ class DummyData:
              'Gender': 'Woman', 'Size': '300ML', 'Price': 4.49}
         ]
 
-        products = []
-
         if skinType == "dry" and gender == "man":
-            products.append(menDrySkinProducts)
+            DummyData.products.append(menDrySkinProducts)
         elif skinType == "sensitive" and gender == "man":
-            products.append(menSensitiveSkinProducts)
+            DummyData.products.append(menSensitiveSkinProducts)
         elif skinType == "dry" and gender == "woman":
-            products.append(womenDrySkinProducts)
+            DummyData.products.append(womenDrySkinProducts)
         elif skinType == "sensitive" and gender == "woman":
-            products.append(womenSensitiveSkinProducts)
+            DummyData.products.append(womenSensitiveSkinProducts)
 
         if hairType == "dry" and gender == "man":
-            products.append(menDryHairProducts)
+            DummyData.products.append(menDryHairProducts)
         elif hairType == "normal" and gender == "man":
-            products.append(menNormalHairProducts)
+            DummyData.products.append(menNormalHairProducts)
         if hairType == "dry" and gender == "woman":
-            products.append(womenDryHairProducts)
+            DummyData.products.append(womenDryHairProducts)
         elif hairType == "normal" and gender == "woman":
-            products.append(womenNormalHairProducts)
+            DummyData.products.append(womenNormalHairProducts)
 
-        print(products)
-        return products
+        print(DummyData.products)
+        return DummyData.products
+
+    # Products on sale data
+    def getSaleProducts(self):
+        saleProducts = [
+            {'Product name': DummyData.findProduct(1), 'Sale': '2nd half price'},
+            {'Product name': DummyData.findProduct(3), 'Sale': '1 + 1 free'}
+        ]
+
+        return saleProducts
+
+    # User profile data
+    def buildUserProfile(gender, skin_type, hair_type):
+        userProfile = [
+            {'Gender': gender, 'Skin Type': skin_type, 'Hair Type': hair_type, 'Address': 'Antwerpenlaan 22, Eindhoven'}
+        ]
+
+        return userProfile
+
+    # Return a product from product list based on ID
+    @staticmethod
+    def findProduct(id):
+        for i in DummyData.products:
+            for p in i:
+                print()
+                if p['ProductID'] == id:
+                    return p['Name']
+
+    # Shopping history data
+    def getShoppingHistory(self):
+        orders = [
+            {'ProductID': DummyData.findProduct(5), 'Quantity': 4, 'Price': 30.76}
+        ]
+
+        return orders
+
+    # Method to return user's ip location
+    def getCity(self):
+        g = geocoder.ip('me')
+        print(g.city)
+        Eindhoven = [
+            "Winkelcentrum Woensel", "Strijpsestraat"
+        ]
+
+        Tilburg = [
+            "Pieter Vredeplein", "Besterdring", "Heuvelstraat"
+        ]
+
+        if g.city in ["IJsselstein", "Breda"]:
+            return Eindhoven
+        elif g.city in "Tilburg":
+            return Tilburg

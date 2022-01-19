@@ -1,28 +1,63 @@
 import os
-import json
 import re
-import torch
-import datetime
+import json
+import yaml
+import pickle as pickle_tts
+from shutil import copyfile
+
+
+class RenamingUnpickler(pickle_tts.Unpickler):
+    """Overload default pickler to solve module renaming problem"""
+    def find_class(self, module, name):
+        return super().find_class(module.replace('mozilla_voice_tts', 'TTS'), name)
 
 
 class AttrDict(dict):
+    """A custom dict which converts dict keys
+    to class attributes"""
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
 
-def load_config(config_path):
+def load_config(config_path: str) -> AttrDict:
+    """Load config files and discard comments
+
+    Args:
+        config_path (str): path to config file.
+    """
     config = AttrDict()
-    with open(config_path, "r") as f:
-        input_str = f.read()
-    input_str = re.sub(r'\\\n', '', input_str)
-    input_str = re.sub(r'//.*\n', '\n', input_str)
-    data = json.loads(input_str)
+
+    ext = os.path.splitext(config_path)[1]
+    if ext in (".yml", ".yaml"):
+        with open(config_path, "r") as f:
+            data = yaml.safe_load(f)
+    else:
+        # fallback to json
+        with open(config_path, "r") as f:
+            input_str = f.read()
+        # handle comments
+        input_str = re.sub(r'\\\n', '', input_str)
+        input_str = re.sub(r'//.*\n', '\n', input_str)
+        data = json.loads(input_str)
+
     config.update(data)
     return config
 
 
-def copy_config_file(config_file, out_path, new_fields):
+def copy_model_files(c, config_file, out_path, new_fields):
+    """Copy config.json and other model files to training folder and add
+    new fields.
+
+    Args:
+        c (dict): model config from config.json.
+        config_file (str): path to config file.
+        out_path (str): output path to copy the file.
+        new_fields (dict): new fileds to be added or edited
+            in the config file.
+    """
+    # copy config.json
+    copy_config_path = os.path.join(out_path, 'config.json')
     config_lines = open(config_file, "r").readlines()
     # add extra information fields
     for key, value in new_fields.items():
@@ -31,48 +66,10 @@ def copy_config_file(config_file, out_path, new_fields):
         else:
             new_line = '"{}":{},\n'.format(key, value)
         config_lines.insert(1, new_line)
-    config_out_file = open(out_path, "w")
+    config_out_file = open(copy_config_path, "w")
     config_out_file.writelines(config_lines)
     config_out_file.close()
-
-
-def load_checkpoint(model, checkpoint_path, use_cuda=False):
-    state = torch.load(checkpoint_path, map_location=torch.device('cpu'))
-    model.load_state_dict(state['model'])
-    if use_cuda:
-        model.cuda()
-    # set model stepsize
-    if 'r' in state.keys():
-        model.decoder.set_r(state['r'])
-    return model, state
-
-
-def save_model(model, optimizer, current_step, epoch, r, output_path, **kwargs):
-    new_state_dict = model.state_dict()
-    state = {
-        'model': new_state_dict,
-        'optimizer': optimizer.state_dict() if optimizer is not None else None,
-        'step': current_step,
-        'epoch': epoch,
-        'date': datetime.date.today().strftime("%B %d, %Y"),
-        'r': r
-    }
-    state.update(kwargs)
-    torch.save(state, output_path)
-
-
-def save_checkpoint(model, optimizer, current_step, epoch, r, output_folder, **kwargs):
-    file_name = 'checkpoint_{}.pth.tar'.format(current_step)
-    checkpoint_path = os.path.join(output_folder, file_name)
-    print(" > CHECKPOINT : {}".format(checkpoint_path))
-    save_model(model, optimizer, current_step, epoch, r, checkpoint_path, **kwargs)
-
-
-def save_best_model(target_loss, best_loss, model, optimizer, current_step, epoch, r, output_folder, **kwargs):
-    if target_loss < best_loss:
-        file_name = 'best_model.pth.tar'
-        checkpoint_path = os.path.join(output_folder, file_name)
-        print(" > BEST MODEL : {}".format(checkpoint_path))
-        save_model(model, optimizer, current_step, epoch, r, checkpoint_path, model_loss=target_loss, **kwargs)
-        best_loss = target_loss
-    return best_loss
+    # copy model stats file if available
+    if c.audio['stats_path'] is not None:
+        copy_stats_path = os.path.join(out_path, 'scale_stats.npy')
+        copyfile(c.audio['stats_path'], copy_stats_path)

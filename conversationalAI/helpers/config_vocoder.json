@@ -1,8 +1,19 @@
 {
-"github_branch":"* dev",
-"restore_path":"/home/erogol/Models/LJSpeech/multiband_melgan_v0.1/checkpoint_1000000.pth.tar",
-    "run_name": "multiband-melgan",
-    "run_description": "multiband melgan mean-var scaling",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/checkpoint_850000.pth.tar",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/checkpoint_850000.pth.tar",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/checkpoint_850000.pth.tar",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/best_model.pth.tar",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/checkpoint_200000.pth.tar",
+"github_branch":"* fullband-melgan",
+"restore_path":"/data4/rw/home/Trainings/LJSpeech/fullband-melgan-September-15-2020_10+36AM-c2d131c/best_model.pth.tar",
+"github_branch":"* fullband-melgan",
+    "run_name": "fullband-melgan",
+    "run_description": "fullband melgan mean-var scaling",
 
     // AUDIO PARAMETERS
     "audio":{
@@ -13,7 +24,7 @@
         "frame_shift_ms": null,  // stft window hop-lengh in ms. If null, 'hop_length' is used.
 
         // Audio processing parameters
-        "sample_rate": 22050,   // DATASET-RELATED: wav sample-rate. If different than the original data, it is resampled.
+        "sample_rate": 24000,   // DATASET-RELATED: wav sample-rate. If different than the original data, it is resampled.
         "preemphasis": 0.0,     // pre-emphasis to reduce spec noise and make it more structured. If 0.0, no -pre-emphasis.
         "ref_level_db": 0,     // reference level db, theoretically 20db is the sound of air.
 
@@ -43,11 +54,11 @@
     // },
 
     // MODEL PARAMETERS
-    "use_pqmf": true,
+    "use_pqmf": false,
 
     // LOSS PARAMETERS
     "use_stft_loss": true,
-    "use_subband_stft_loss": true,
+    "use_subband_stft_loss": false,
     "use_mse_gan_loss": true,
     "use_hinge_gan_loss": false,
     "use_feat_match_loss": false,  // use only with melgan discriminators
@@ -66,13 +77,6 @@
         "win_lengths": [600, 1200, 240]
     },
 
-    // subband multiscale stft loss parameters
-    "subband_stft_loss_params":{
-        "n_ffts": [384, 683, 171],
-        "hop_lengths": [30, 60, 10],
-        "win_lengths": [150, 300, 60]
-    },
-
     "target_loss": "avg_G_loss",  // loss value to pick the best model to save after each epoch
 
     // DISCRIMINATOR
@@ -85,14 +89,14 @@
     "steps_to_start_discriminator": 200000,      // steps required to start GAN trainining.1
 
     // GENERATOR
-    "generator_model": "multiband_melgan_generator",
+    "generator_model": "fullband_melgan_generator",
     "generator_model_params": {
-        "upsample_factors":[8, 4, 2],
+        "upsample_factors":[8, 8, 4],
         "num_res_blocks": 4
     },
 
     // DATASET
-    "data_path": "/home/erogol/Data/LJSpeech-1.1/wavs/",
+    "data_path": "/data5/rw/home/Data/LibriTTS/LibriTTS/train-clean-360/",
     "feature_path": null,
     "seq_len": 16384,
     "pad_short": 2000,
@@ -103,7 +107,7 @@
     "reinit_layers": [],    // give a list of layer names to restore from the given checkpoint. If not defined, it reloads all heuristically matching layers.
 
     // TRAINING
-    "batch_size": 64,       // Batch size for training. Lower values than 32 might cause hard to learn attention. It is overwritten by 'gradual_training'.
+    "batch_size": 48,       // Batch size for training. Lower values than 32 might cause hard to learn attention. It is overwritten by 'gradual_training'.
 
     // VALIDATION
     "run_eval": true,
@@ -115,18 +119,18 @@
     "wd": 0.0,                // Weight decay weight.
     "gen_clip_grad": -1,      // Generator gradient clipping threshold. Apply gradient clipping if > 0
     "disc_clip_grad": -1,     // Discriminator gradient clipping threshold.
-    "lr_scheduler_gen": "MultiStepLR",   // one of the schedulers from https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-    "lr_scheduler_gen_params": {
-        "gamma": 0.5,
-        "milestones": [100000, 200000, 300000, 400000, 500000, 600000]
-    },
-    "lr_scheduler_disc": "MultiStepLR",   // one of the schedulers from https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-    "lr_scheduler_disc_params": {
-        "gamma": 0.5,
-        "milestones": [100000, 200000, 300000, 400000, 500000, 600000]
-    },
-    "lr_gen": 1e-4,                  // Initial learning rate. If Noam decay is active, maximum learning rate.
-    "lr_disc": 1e-4,
+    //"lr_scheduler_gen": "MultiStepLR",   // one of the schedulers from https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+    //"lr_scheduler_gen_params": {
+    //    "gamma": 0.5,
+    //    "milestones": [100000, 200000, 300000, 400000, 500000, 600000]
+    //},
+    //"lr_scheduler_disc": "MultiStepLR",   // one of the schedulers from https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+    //"lr_scheduler_disc_params": {
+    // 	  "gamma": 0.5,
+    //	  "milestones": [100000, 200000, 300000, 400000, 500000, 600000]
+    //},
+    "lr_gen": 0.000015625,                  // Initial learning rate. If Noam decay is active, maximum learning rate.
+    "lr_disc": 0.000015625,
 
     // TENSORBOARD and LOGGING
     "print_step": 25,       // Number of steps to log traning on console.
@@ -141,6 +145,7 @@
     "eval_split_size": 10,
 
     // PATHS
-    "output_path": "/home/erogol/Models/LJSpeech/"
+    "output_path": "/data4/rw/home/Trainings/LJSpeech/"
 }
+
 
