@@ -3,7 +3,7 @@ import importlib
 import numpy as np
 from matplotlib import pyplot as plt
 
-from TTS.utils.visual import plot_spectrogram
+from TTS.tts.utils.visual import plot_spectrogram
 
 
 def plot_results(y_hat, y, ap, global_step, name_prefix):
@@ -42,12 +42,35 @@ def to_camel(text):
     return re.sub(r'(?!^)_([a-zA-Z])', lambda m: m.group(1).upper(), text)
 
 
+def setup_wavernn(c):
+    print(" > Model: WaveRNN")
+    MyModel = importlib.import_module("TTS.vocoder.models.wavernn")
+    MyModel = getattr(MyModel, "WaveRNN")
+    model = MyModel(
+        rnn_dims=c.wavernn_model_params['rnn_dims'],
+        fc_dims=c.wavernn_model_params['fc_dims'],
+        mode=c.mode,
+        mulaw=c.mulaw,
+        pad=c.padding,
+        use_aux_net=c.wavernn_model_params['use_aux_net'],
+        use_upsample_net=c.wavernn_model_params['use_upsample_net'],
+        upsample_factors=c.wavernn_model_params['upsample_factors'],
+        feat_dims=c.audio['num_mels'],
+        compute_dims=c.wavernn_model_params['compute_dims'],
+        res_out_dims=c.wavernn_model_params['res_out_dims'],
+        num_res_blocks=c.wavernn_model_params['num_res_blocks'],
+        hop_length=c.audio["hop_length"],
+        sample_rate=c.audio["sample_rate"],
+    )
+    return model
+
+
 def setup_generator(c):
     print(" > Generator Model: {}".format(c.generator_model))
     MyModel = importlib.import_module('TTS.vocoder.models.' +
                                       c.generator_model.lower())
     MyModel = getattr(MyModel, to_camel(c.generator_model))
-    if c.generator_model in 'melgan_generator':
+    if c.generator_model.lower() in 'melgan_generator':
         model = MyModel(
             in_channels=c.audio['num_mels'],
             out_channels=1,
@@ -58,7 +81,7 @@ def setup_generator(c):
             num_res_blocks=c.generator_model_params['num_res_blocks'])
     if c.generator_model in 'melgan_fb_generator':
         pass
-    if c.generator_model in 'multiband_melgan_generator':
+    if c.generator_model.lower() in 'multiband_melgan_generator':
         model = MyModel(
             in_channels=c.audio['num_mels'],
             out_channels=4,
@@ -67,14 +90,53 @@ def setup_generator(c):
             upsample_factors=c.generator_model_params['upsample_factors'],
             res_kernel=3,
             num_res_blocks=c.generator_model_params['num_res_blocks'])
+    if c.generator_model.lower() in 'fullband_melgan_generator':
+        model = MyModel(
+            in_channels=c.audio['num_mels'],
+            out_channels=1,
+            proj_kernel=7,
+            base_channels=512,
+            upsample_factors=c.generator_model_params['upsample_factors'],
+            res_kernel=3,
+            num_res_blocks=c.generator_model_params['num_res_blocks'])
+    if c.generator_model.lower() in 'parallel_wavegan_generator':
+        model = MyModel(
+            in_channels=1,
+            out_channels=1,
+            kernel_size=3,
+            num_res_blocks=c.generator_model_params['num_res_blocks'],
+            stacks=c.generator_model_params['stacks'],
+            res_channels=64,
+            gate_channels=128,
+            skip_channels=64,
+            aux_channels=c.audio['num_mels'],
+            dropout=0.0,
+            bias=True,
+            use_weight_norm=True,
+            upsample_factors=c.generator_model_params['upsample_factors'])
+    if c.generator_model.lower() in 'wavegrad':
+        model = MyModel(
+            in_channels=c['audio']['num_mels'],
+            out_channels=1,
+            use_weight_norm=c['model_params']['use_weight_norm'],
+            x_conv_channels=c['model_params']['x_conv_channels'],
+            y_conv_channels=c['model_params']['y_conv_channels'],
+            dblock_out_channels=c['model_params']['dblock_out_channels'],
+            ublock_out_channels=c['model_params']['ublock_out_channels'],
+            upsample_factors=c['model_params']['upsample_factors'],
+            upsample_dilations=c['model_params']['upsample_dilations'])
     return model
 
 
 def setup_discriminator(c):
     print(" > Discriminator Model: {}".format(c.discriminator_model))
-    MyModel = importlib.import_module('TTS.vocoder.models.' +
-                                      c.discriminator_model.lower())
-    MyModel = getattr(MyModel, to_camel(c.discriminator_model))
+    if 'parallel_wavegan' in c.discriminator_model:
+        MyModel = importlib.import_module(
+            'TTS.vocoder.models.parallel_wavegan_discriminator')
+    else:
+        MyModel = importlib.import_module('TTS.vocoder.models.' +
+                                          c.discriminator_model.lower())
+    MyModel = getattr(MyModel, to_camel(c.discriminator_model.lower()))
     if c.discriminator_model in 'random_window_discriminator':
         model = MyModel(
             cond_channels=c.audio['num_mels'],
@@ -95,8 +157,36 @@ def setup_discriminator(c):
             max_channels=c.discriminator_model_params['max_channels'],
             downsample_factors=c.
             discriminator_model_params['downsample_factors'])
+    if c.discriminator_model == 'residual_parallel_wavegan_discriminator':
+        model = MyModel(
+            in_channels=1,
+            out_channels=1,
+            kernel_size=3,
+            num_layers=c.discriminator_model_params['num_layers'],
+            stacks=c.discriminator_model_params['stacks'],
+            res_channels=64,
+            gate_channels=128,
+            skip_channels=64,
+            dropout=0.0,
+            bias=True,
+            nonlinear_activation="LeakyReLU",
+            nonlinear_activation_params={"negative_slope": 0.2},
+        )
+    if c.discriminator_model == 'parallel_wavegan_discriminator':
+        model = MyModel(
+            in_channels=1,
+            out_channels=1,
+            kernel_size=3,
+            num_layers=c.discriminator_model_params['num_layers'],
+            conv_channels=64,
+            dilation_factor=1,
+            nonlinear_activation="LeakyReLU",
+            nonlinear_activation_params={"negative_slope": 0.2},
+            bias=True
+        )
     return model
 
 
-def check_config(c):
-    pass
+# def check_config(c):
+#     c = None
+#     pass

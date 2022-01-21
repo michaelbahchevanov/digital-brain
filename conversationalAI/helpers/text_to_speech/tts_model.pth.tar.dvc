@@ -1,0 +1,5 @@
+outs:
+- md5: 48c8c8eeed00b5d7929ecc6a14eb1b8e
+  size: 347137201
+  path: tts_model.pth.tar
+  isexec: true

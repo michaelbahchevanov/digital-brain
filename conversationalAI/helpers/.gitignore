@@ -1,0 +1,3 @@
+sentiment_analysis/best_model_state.pt
+text_to_speech/tts_model.pth.tar
+text_to_speech/vocoder_model.pth.tar
