@@ -10,28 +10,25 @@ from TTS.utils.audio import AudioProcessor
 from TTS.tts.utils.synthesis import synthesis
 from TTS.vocoder.utils.generic_utils import setup_generator
 from TTS.tts.utils.io import load_checkpoint
-import warnings
 
 
 class TextToSpeech:
-    warnings.filterwarnings('ignore')
-
     # Colab: https://colab.research.google.com/drive/1uV2CD1hWx5FGUrcIQjdZfI717AMj8-kP?usp=sharing
     # Source: https://github.com/mozilla/TTS
 
     use_cuda = False
 
     # model paths
-    TTS_MODEL = "helpers/tts_model.pth.tar"
-    TTS_CONFIG = "helpers/config.json"
-    VOCODER_MODEL = "helpers/vocoder_model.pth.tar"
-    VOCODER_CONFIG = "helpers/config_vocoder.json"
+    TTS_MODEL = "helpers/text_to_speech/tts_model.pth.tar"
+    TTS_CONFIG = "helpers/text_to_speech/config.json"
+    VOCODER_MODEL = "helpers/text_to_speech/vocoder_model.pth.tar"
+    VOCODER_CONFIG = "helpers/text_to_speech/config_vocoder.json"
 
     # load configs
     TTS_CONFIG = load_config(TTS_CONFIG)
     VOCODER_CONFIG = load_config(VOCODER_CONFIG)
-    TTS_CONFIG.audio['stats_path'] = "helpers/scale_stats.npy"
-    VOCODER_CONFIG.audio['stats_path'] = "helpers/scale_stats_vocoder.npy"
+    TTS_CONFIG.audio['stats_path'] = "helpers/text_to_speech/scale_stats.npy"
+    VOCODER_CONFIG.audio['stats_path'] = "helpers/text_to_speech/scale_stats_vocoder.npy"
 
     # load the audio processor
     ap = AudioProcessor(**TTS_CONFIG.audio)

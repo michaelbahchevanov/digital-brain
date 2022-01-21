@@ -1,13 +1,15 @@
 from transformers import BertModel, BertTokenizer
 import torch
 from torch import nn
-
 import warnings
 warnings.filterwarnings('ignore')
 
 
 class SentimentClassifier(nn.Module):
-    # define varabiables to be used
+    # Fine-tuuned a BERT model with a Google Play Reviews dataset,
+    # but could also use YELP's official dataset for NLP tasks
+
+    # varabiables
     PRE_TRAINED_MODEL_NAME = 'bert-base-cased'
     tokenizer = BertTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME)
     MAX_LEN = 160
@@ -47,5 +49,5 @@ class SentimentClassifier(nn.Module):
         model = SentimentClassifier(len(SentimentClassifier.class_names))
         model = model.to(SentimentClassifier.device)
 
-        model.load_state_dict(torch.load('helpers/best_model_state.pt', map_location=torch.device('cpu')))
+        model.load_state_dict(torch.load('helpers/sentiment_analysis/best_model_state.pt', map_location=torch.device('cpu')))
         return model

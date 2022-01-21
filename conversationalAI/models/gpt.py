@@ -8,7 +8,7 @@ import configparser
 # Method to get the api key of OpenAI
 def get_api_key():
     config = configparser.ConfigParser()
-    config.read('helpers/openai_config.ini')
+    config.read('helpers/openai/openai_config.ini')
     return config['openai']['api']
 
 
@@ -67,10 +67,10 @@ class GPTPlatform:
 
         text_response = response['choices'][0]['text']
 
-        TextToSpeech.textToSpeechAudio(text_response)
-        filename = 'audio/clean_audio.wav'
-        playsound(filename)
-        os.remove(filename)
+        # TextToSpeech.textToSpeechAudio(text_response)
+        # filename = 'audio/clean_audio.wav'
+        # playsound(filename)
+        # os.remove(filename)
 
         new_prompt = converse + text_response
 

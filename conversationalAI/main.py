@@ -43,22 +43,13 @@ def convert_to_bytes(file_or_bytes, resize=None):
     return bio.getvalue()
 
 
-# Method contains the dialog for the conversation logic
+# Method contains the GUI logic integrated with the platforms' NLP techniques
 def main_app(name, gender, skin_type, hair_type):
 
+    # Prompt engineering/designing
     start_prompt = "The following is a conversation with Michelle Green, and she is an AI assistant and a AI salesperson for Kruidvat. " \
-                    "Michelle starts the conversation by greeting the user by their name. Michelle is creative, talkative, helpful, smart, and very friendly. " \
-                    "Michelle gives product recommendations strictly based on " + name + "'s user profile: " + str(DummyData.buildUserProfile(gender, skin_type, hair_type)) + ". Michelle is emotionally " \
-                    "intelligent and understands the user's intention. Michelle will give information about Kruidvat's products" + str(DummyData.getProducts(gender, skin_type, hair_type)) + ". " \
-                    "Michelle can inform the user that the following products:" + str(DummyData.getSaleProducts) + " are on sale. " + \
-                    "Due to the COVID 19 measures set by the Government, Michelle will inform the user that it is not possible to shop in the store and " \
-                    "that Kruidvat is allowing for customers to Click & Collect. Michelle can let " + name + " know the opening hours are 8 AM to 6 PM" \
-                    " are for the stores located in " + str(DummyData.getCity(None)) + ". The user can find the products in their shopping cart at these locations as well"\
-                    ". Michelle will return a list of the product's name if asked, and she will add, remove, update, and search the shopping cart for " + name + ". " \
-                    + name + "'s shopping cart is empty but is updated during the conversation with Michelle. " \
-                    "If the user ask Michelle to do a task she was never instructed to do, she will direct the user to an employee. " \
-                    "Michelle will ask the user if they would like to repeat their previous order from their shopping history " + str(DummyData.getShoppingHistory(None)) + ". " \
-                    "Michelle can have the order delivered at the user's address from his user profile.'"
+                    "Michelle starts the conversation by greeting the user by their name. Michelle is creative, helpful, smart, and very friendly. " \
+                    "Michelle gives product recommendations strictly based on " + name + "'s user profile: " + str(DummyData.buildUserProfile(gender, skin_type, hair_type)) + "."
 
     sg.theme('DarkRed1')
     filename = "images/michelle_image.png"
@@ -71,7 +62,7 @@ def main_app(name, gender, skin_type, hair_type):
         [sg.Output(size=(80, 20), key='-OUTPUT-')],
     ]
 
-    window = sg.Window("AI Assistant for Kruidvat", layout, return_keyboard_events=True, resizable=True) #use_default_focus=False
+    window = sg.Window("AI Assistant for Kruidvat", layout, return_keyboard_events=True, resizable=True)
 
     try:
         while True:
@@ -80,7 +71,7 @@ def main_app(name, gender, skin_type, hair_type):
 
             if event in ["Exit", sg.WIN_CLOSED]:
                 break
-            elif event == "Speak":
+            elif event == "Speak": # Speak button
                 voice_text = SpeechToText.speechToText("start")
                 text += voice_text
 
@@ -93,14 +84,14 @@ def main_app(name, gender, skin_type, hair_type):
                 with open("conversation_history/conversation_with_michelle_4.txt", 'w') as f:
                     f.write(start_prompt)
 
-            elif event == 'Return:36':
+            elif event == 'Return:36': #return:36 is the Enter button
                 start_prompt += ". " + name + ": " + str(text) + ". Michelle:"
                 answer, start_prompt = GPTPlatform.conversationWithVirtualAssistant(start_prompt, name)
 
                 window['-OUTPUT-'].update("YOU: " + text + "\n" + "MICHELLE: " + answer)
                 window['-CONVO-'].update("")
 
-                with open("conversation_history/conversation_with_michelle_4.txt", 'w') as f:
+                with open("conversation_history/conversation_with_michelle_4.txt", 'w') as f: # add date & time for better logging of convo history
                     f.write(start_prompt)
 
     except Exception as e:
